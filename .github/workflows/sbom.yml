@@ -1,0 +1,57 @@
+---
+name: "SBOM & Vulnerability Scan"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build container image
+        uses: docker/build-push-action@v6
+        with:
+          context: .devcontainer
+          file: .devcontainer/Containerfile
+          push: false
+          load: true
+          tags: ai-sandbox:sbom-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: ai-sandbox:sbom-scan
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          artifact-name: sbom.cdx.json
+
+      - name: Scan SBOM for vulnerabilities with Grype
+        uses: anchore/scan-action@v6
+        id: grype
+        with:
+          sbom: sbom.cdx.json
+          fail-build: false
+          output-format: sarif
+
+      - name: Upload Grype SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: container-vulnerability-scan

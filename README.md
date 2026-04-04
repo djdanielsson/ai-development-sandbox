@@ -55,22 +55,56 @@ Everything in this setup is pinned to enable reproducible builds and security au
 | Component | How It's Pinned | How to Update |
 |---|---|---|
 | Base image (`fedora:43`) | Version tag + SHA256 digest in `Containerfile` | Dependabot opens PRs automatically |
-| DNF packages | Exact `name-version-release` strings | Run `scripts/update-dnf-versions.sh` inside the container |
-| Oh My Zsh | Git commit SHA | Update `OHMYZSH_COMMIT` ARG in Containerfile |
-| prek | Release version tag | Update `PREK_VERSION` ARG in Containerfile |
-| VS Code extensions | Pinned `publisher.name@version` | Update versions in `devcontainer.json` |
+| DNF packages | Exact `name-version-release` strings | CI workflow opens PRs automatically (weekly) |
+| Oh My Zsh | Git commit SHA | CI workflow opens PRs automatically (weekly) |
+| prek | Release version tag | CI workflow opens PRs automatically (weekly) |
+| VS Code extensions | Pinned `publisher.name@version` | CI workflow opens PRs automatically (weekly) |
+| GitHub SSH host keys | Embedded in `container-init.sh` | CI workflow verifies monthly, opens PR on rotation |
 | AI CLIs (Claude, Cursor, OpenCode) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
 
 **Note on AI CLI installers:** Claude, Cursor, and OpenCode are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
 
 ## Keeping Dependencies Updated
 
-This repo uses **GitHub Dependabot** (`.github/dependabot.yml`) to automatically open PRs when:
+This repo uses a combination of **Dependabot** and **GitHub Actions workflows** to keep every pinned dependency current. All updates arrive as PRs for human review — nothing auto-merges.
 
-- The Fedora base image has a new digest
-- DevContainer features are updated (if any are added)
+### Dependabot (`.github/dependabot.yml`)
 
-For DNF packages, run the update script inside a running container:
+- **Fedora base image** — new digest PRs (docker ecosystem)
+- **DevContainer features** — version updates (devcontainers ecosystem)
+- **Pre-commit hooks** — revision updates (pre-commit ecosystem)
+
+### CI Update Workflows (`.github/workflows/`)
+
+| Workflow | Schedule | What It Updates |
+|---|---|---|
+| `update-dnf-versions.yml` | Weekly (Mon) | DNF package version pins in `Containerfile` |
+| `update-ohmyzsh.yml` | Weekly (Mon) | `OHMYZSH_COMMIT` SHA in `Containerfile` |
+| `update-prek.yml` | Weekly (Mon) | `PREK_VERSION` tag in `Containerfile` |
+| `update-extensions.yml` | Weekly (Mon) | Extension versions in `devcontainer.json` |
+| `verify-github-ssh-keys.yml` | Monthly (1st) | SSH host keys in `container-init.sh` |
+
+All update workflows can also be triggered manually via `workflow_dispatch`.
+
+### CI Quality Gates
+
+Every push and PR runs:
+
+- **Pre-commit hooks** — trailing whitespace, EOF fixer, large file check, gitleaks
+- **ShellCheck** — static analysis of all shell scripts
+- **Container build** — validates the Containerfile builds successfully (catches broken version pins)
+
+### SBOM & Vulnerability Scanning
+
+On every push to `main` and on PRs, the CI:
+
+1. Builds the container image
+2. Generates a **CycloneDX SBOM** using [Syft](https://github.com/anchore/syft) (uploaded as a build artifact)
+3. Scans the SBOM for known vulnerabilities using [Grype](https://github.com/anchore/grype) (results uploaded to GitHub Security tab)
+
+### Manual Fallback
+
+For DNF packages, the update script can still be run manually inside a Fedora container:
 ```bash
 bash scripts/update-dnf-versions.sh
 ```
@@ -97,4 +131,4 @@ This means the container boundary is **not a strong security boundary**. The san
 
 ### SSH Host Key Verification
 
-GitHub's SSH host keys are embedded directly in `scripts/container-init.sh` rather than using `ssh-keyscan` at runtime. This prevents MITM attacks during first connection. If GitHub rotates their keys, update the `known_hosts` block in that script.
+GitHub's SSH host keys are embedded directly in `scripts/container-init.sh` rather than using `ssh-keyscan` at runtime. This prevents MITM attacks during first connection. The `verify-github-ssh-keys` CI workflow checks monthly for key rotations and opens a PR if they change.

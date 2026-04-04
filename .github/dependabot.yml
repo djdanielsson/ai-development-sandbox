@@ -1,9 +1,9 @@
 ---
 version: 2
 updates:
-  # Track base image updates in Containerfile (fedora:43@sha256:...)
+  # Track base image updates in .devcontainer/Containerfile (fedora:43@sha256:...)
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/.devcontainer"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -26,6 +26,20 @@ updates:
     labels:
       - "dependencies"
       - "devcontainer"
+    cooldown:
+      default-days: 7
+
+  # Track GitHub Actions version updates in workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
     cooldown:
       default-days: 7
 
