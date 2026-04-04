@@ -1,0 +1,55 @@
+# syntax=docker/Containerfile:1
+# --- Base Image (pinned by version + digest for reproducibility) ---
+# Dependabot tracks the `fedora` image and opens PRs when new digests are published.
+# To update manually: podman inspect fedora:43 --format '{{.Digest}}'
+FROM fedora:43@sha256:8133c4b215c7338559cc137e24e92edc351b4cbabc1152d1f868d3fbc28aac5c
+
+# --- System Packages ---
+# Versions are locked to specific releases so builds are reproducible.
+# Dependabot cannot update these; run `scripts/update-dnf-versions.sh` to refresh.
+
+ARG DNF_PACKAGES="\
+    podman-5:5.8.1-1.fc43 \
+    curl-8.15.0-5.fc43 \
+    git-2.53.0-1.fc43 \
+    tar-2:1.35-6.fc43 \
+    sudo-1.9.17-6.p2.fc43 \
+    procps-ng-4.0.4-7.fc43.1 \
+    findutils-1:4.10.0-6.fc43 \
+    gh-2.87.3-1.fc43 \
+    zsh-5.9-19.fc43 \
+    fzf-0.70.0-1.fc43 \
+    eza-0.23.4-1.fc43 \
+    zoxide-0.9.8-1.fc43 \
+    vim-enhanced-2:9.2.280-1.fc43 \
+    gettext-envsubst-0.25.1-2.fc43 \
+    jq-1.8.1-1.fc43 \
+"
+
+RUN dnf install -y --setopt=install_weak_deps=False $DNF_PACKAGES && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+# --- AI Agents & Tools ---
+# These use curl|bash installers which are inherently unverifiable at build time.
+# AUDIT: review each URL's install script before building.
+# Each installer is fetched over TLS and the installed binary version is logged.
+COPY scripts/install-tools.sh /tmp/install-tools.sh
+RUN chmod +x /tmp/install-tools.sh && /tmp/install-tools.sh && rm /tmp/install-tools.sh
+
+# --- Oh My Zsh (pinned to commit) ---
+ARG OHMYZSH_COMMIT="9e2c1548c3dfeefd055e1c6606f66657093ae928"
+RUN git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git /root/.oh-my-zsh && \
+    cd /root/.oh-my-zsh && git fetch --depth 1 origin "$OHMYZSH_COMMIT" && \
+    git checkout "$OHMYZSH_COMMIT"
+
+# --- prek (pre-commit runner, pinned version) ---
+ARG PREK_VERSION="v0.3.8"
+RUN curl --proto '=https' --tlsv1.2 -LsSf \
+    "https://github.com/j178/prek/releases/download/${PREK_VERSION}/prek-installer.sh" | sh
+
+# --- Container init script (runs at each container start) ---
+COPY scripts/container-init.sh /usr/local/bin/container-init.sh
+RUN chmod +x /usr/local/bin/container-init.sh
+
+ENV PATH="/root/.local/bin:${PATH}"

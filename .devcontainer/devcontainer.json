@@ -1,0 +1,52 @@
+{
+  "name": "AI Sandbox Environment (Fedora)",
+  "build": {
+    "dockerfile": "Containerfile"
+  },
+  "containerUser": "root",
+
+  // Required for Podman-in-Podman. This intentionally weakens container isolation.
+  // See README.md "Security Model" section for rationale.
+  "runArgs": [
+    "--cap-add=SYS_ADMIN",
+    "--cap-add=MKNOD",
+    "--cap-add=NET_ADMIN",
+    "--device=/dev/fuse",
+    "--security-opt=seccomp=unconfined",
+    "--security-opt=label=disable",
+    "--security-opt=unmask=/sys/fs/cgroup",
+    "--security-opt=systempaths=unconfined",
+    "--userns=host"
+  ],
+
+  "mounts": [
+    "source=aibox-cursor-state,target=/root/.cursor,type=volume",
+    "source=aibox-claude-state,target=/root/.claude,type=volume",
+    "source=aibox-opencode-state,target=/root/.opencode,type=volume",
+    "source=aibox-bash-history,target=/root/bash-history,type=volume",
+    "source=aibox-podman-storage,target=/var/lib/containers,type=volume",
+    "source=${localEnv:HOME}/.default-pre-commit-config.yaml,target=/tmp/default-pre-commit-config.yaml,type=bind,ro",
+    "source=${localEnv:HOME}/.zshrc,target=/root/.zshrc,type=bind,ro"
+  ],
+
+  "remoteEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "CURSOR_API_KEY": "${localEnv:CURSOR_API_KEY}",
+    "GITHUB_TOKEN": "${localEnv:AI_GITHUB_TOKEN}",
+    "AI_GIT_NAME": "${localEnv:AI_GIT_NAME}",
+    "AI_GIT_EMAIL": "${localEnv:AI_GIT_EMAIL}",
+    "AI_SSH_KEY_B64": "${localEnv:AI_SSH_KEY_B64}",
+    "AI_GPG_KEY_B64": "${localEnv:AI_GPG_KEY_B64}"
+  },
+
+  "postStartCommand": "bash /usr/local/bin/container-init.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "eamodio.gitlens@16.2.2",
+        "github.copilot@1.277.0"
+      ]
+    }
+  }
+}
