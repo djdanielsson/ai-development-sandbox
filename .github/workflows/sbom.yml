@@ -42,7 +42,7 @@ jobs:
           artifact-name: sbom.cdx.json
 
       - name: Scan SBOM for vulnerabilities with Grype
-        uses: anchore/scan-action@v6
+        uses: anchore/scan-action@v7
         id: grype
         with:
           sbom: sbom.cdx.json
