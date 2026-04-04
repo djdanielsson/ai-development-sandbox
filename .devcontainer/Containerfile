@@ -1,4 +1,4 @@
-# syntax=docker/Containerfile:1
+# syntax=docker/dockerfile:1
 # --- Base Image (pinned by version + digest for reproducibility) ---
 # Dependabot tracks the `fedora` image and opens PRs when new digests are published.
 # To update manually: podman inspect fedora:43 --format '{{.Digest}}'

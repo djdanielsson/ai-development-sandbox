@@ -13,6 +13,7 @@ PACKAGES=(
   vim-enhanced gettext-envsubst jq
 )
 
+# shellcheck disable=SC1003
 echo 'ARG DNF_PACKAGES="\'
 for pkg in "${PACKAGES[@]}"; do
   resolved=$(dnf repoquery --latest-limit=1 --qf '%{name}-%{epoch}:%{version}-%{release}' "$pkg" 2>/dev/null | head -1)
