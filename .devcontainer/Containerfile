@@ -9,22 +9,7 @@ FROM fedora:43@sha256:781b7642e8bf256e9cf75d2aa58d86f5cc695fd2df113517614e181a5e
 # Dependabot cannot update these; run `scripts/update-dnf-versions.sh` to refresh.
 
 ARG DNF_PACKAGES="\
-    podman-5:5.8.1-1.fc43 \
-    curl-8.15.0-5.fc43 \
-    git-2.53.0-1.fc43 \
-    tar-2:1.35-6.fc43 \
-    sudo-1.9.17-6.p2.fc43 \
-    procps-ng-4.0.4-7.fc43.1 \
-    findutils-1:4.10.0-6.fc43 \
-    gh-2.87.3-1.fc43 \
-    zsh-5.9-19.fc43 \
-    fzf-0.70.0-1.fc43 \
-    eza-0.23.4-1.fc43 \
-    zoxide-0.9.8-1.fc43 \
-    vim-enhanced-2:9.2.280-1.fc43 \
-    gettext-envsubst-0.25.1-2.fc43 \
-    jq-1.8.1-1.fc43 \
-"
+    podman-5:5.8.1-1.fc43     curl-8.15.0-5.fc43     git-2.53.0-1.fc43     tar-2:1.35-6.fc43     sudo-1.9.17-6.p2.fc43     procps-ng-4.0.4-7.fc43.1     findutils-1:4.10.0-6.fc43     gh-2.87.3-1.fc43     zsh-5.9-19.fc43     fzf-0.70.0-1.fc43     eza-0.23.4-1.fc43     zoxide-0.9.8-1.fc43     vim-enhanced-2:9.2.280-1.fc43     gettext-envsubst-0.25.1-2.fc43     jq-1.8.1-1.fc43 "
 
 RUN dnf install -y --setopt=install_weak_deps=False $DNF_PACKAGES && \
     dnf clean all && \
