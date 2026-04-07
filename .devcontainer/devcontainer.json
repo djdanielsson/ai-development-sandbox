@@ -49,8 +49,8 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "eamodio.gitlens@16.2.2",
-        "github.copilot@1.277.0"
+        "eamodio.gitlens@2026.4.405",
+        "github.copilot@1.388.0"
       ]
     }
   }
