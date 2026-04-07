@@ -11,7 +11,7 @@ FROM docker.io/library/fedora:43@sha256:781b7642e8bf256e9cf75d2aa58d86f5cc695fd2
 # Versions are locked to specific releases so builds are reproducible.
 # Dependabot cannot update these; run `scripts/update-dnf-versions.sh` to refresh.
 
-ARG DNF_PACKAGES="\
+ARG DNF_PACKAGES="\\
     podman-5:5.8.1-1.fc43 \
     curl-8.15.0-5.fc43 \
     git-2.53.0-1.fc43 \
