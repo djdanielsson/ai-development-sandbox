@@ -27,6 +27,14 @@ ARG DNF_PACKAGES="\
     vim-enhanced-2:9.2.280-1.fc43 \
     gettext-envsubst-0.25.1-2.fc43 \
     jq-1.8.1-1.fc43 \
+    dnf5-5.2.18.0-2.fc43 \
+    dnf5-plugins-5.2.18.0-2.fc43 \
+    libdnf5-5.2.18.0-2.fc43 \
+    libdnf5-cli-5.2.18.0-2.fc43 \
+    gnutls-3.8.12-1.fc43 \
+    libssh-0.11.4-1.fc43 \
+    libtasn1-4.21.0-1.fc43 \
+    systemd-standalone-sysusers-258.7-1.fc43 \
 "
 
 RUN dnf install -y --setopt=install_weak_deps=False $DNF_PACKAGES && \

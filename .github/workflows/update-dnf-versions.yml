@@ -29,6 +29,8 @@ jobs:
           PACKAGES=(
             podman curl git tar sudo procps-ng findutils gh zsh fzf eza zoxide
             vim-enhanced gettext-envsubst jq
+            dnf5 dnf5-plugins libdnf5 libdnf5-cli
+            gnutls libssh libtasn1 systemd-standalone-sysusers
           )
 
           new_block='ARG DNF_PACKAGES="\\'
