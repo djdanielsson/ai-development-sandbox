@@ -1,4 +1,10 @@
 #!/usr/bin/env zsh
+
+# Bail out early for non-interactive shells (scripts, AI agent commands, pipes).
+# This prevents Oh My Zsh, themes, and prompt tooling from polluting stdout or
+# hanging on TTY operations when an agent runs shell commands.
+[[ ! -o interactive ]] && return
+
 export ZSH="$HOME/.oh-my-zsh"
 
 # oh-my-zsh configuration
@@ -30,7 +36,7 @@ setopt autocd
 export EDITOR=vim
 export PATH="$HOME/.devcontainers/bin:$PATH"
 export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
-export GPG_TTY=$(tty)
+export GPG_TTY=$(tty 2>/dev/null || true)
 __gitca() {
   git add .
   git commit -am "$(git status | grep -e 'modified:\|deleted:\|added:\|renamed:\|new file:')"
