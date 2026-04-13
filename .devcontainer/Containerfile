@@ -27,6 +27,7 @@ ARG DNF_PACKAGES="\
     vim-enhanced-2:9.2.280-1.fc43 \
     gettext-envsubst-0.25.1-2.fc43 \
     jq-1.8.1-1.fc43 \
+    unzip-6.0-67.fc43 \
     dnf5-5.2.18.0-2.fc43 \
     dnf5-plugins-5.2.18.0-2.fc43 \
     libdnf5-5.2.18.0-2.fc43 \
@@ -51,23 +52,12 @@ RUN dnf install -y --setopt=install_weak_deps=False $DNF_PACKAGES && \
 # events_logger="file" avoids the missing systemd journal.
 RUN printf '[containers]\ncgroups = "disabled"\n\n[engine]\ncgroup_manager = "cgroupfs"\nevents_logger = "file"\n' > /etc/containers/containers.conf
 
-# --- AI Agents & Tools ---
-# These use curl|bash installers which are inherently unverifiable at build time.
+# --- Tools (AI agents, CLIs, shell setup) ---
+# Everything that downloads binaries or runs curl|bash installers lives in
+# install-tools.sh so it can detect the build architecture at RUN time.
 # AUDIT: review each URL's install script before building.
-# Each installer is fetched over TLS and the installed binary version is logged.
 COPY scripts/install-tools.sh /tmp/install-tools.sh
 RUN chmod +x /tmp/install-tools.sh && /tmp/install-tools.sh && rm /tmp/install-tools.sh
-
-# --- Oh My Zsh (pinned to commit) ---
-ARG OHMYZSH_COMMIT="887a864aba396c0e6dcf7c0254f455676f830daa"
-RUN git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git /root/.oh-my-zsh && \
-    cd /root/.oh-my-zsh && git fetch --depth 1 origin "$OHMYZSH_COMMIT" && \
-    git checkout "$OHMYZSH_COMMIT"
-
-# --- prek (pre-commit runner, pinned version) ---
-ARG PREK_VERSION="v0.3.8"
-RUN curl --proto '=https' --tlsv1.2 -LsSf \
-    "https://github.com/j178/prek/releases/download/${PREK_VERSION}/prek-installer.sh" | sh
 
 # --- Container init script (runs at each container start) ---
 COPY scripts/container-init.sh /usr/local/bin/container-init.sh

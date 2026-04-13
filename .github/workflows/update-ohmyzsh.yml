@@ -22,7 +22,7 @@ jobs:
         id: check
         run: |
           latest_sha=$(git ls-remote https://github.com/ohmyzsh/ohmyzsh.git HEAD | awk '{print $1}')
-          current_sha=$(grep -oP 'OHMYZSH_COMMIT="\K[^"]+' .devcontainer/Containerfile)
+          current_sha=$(grep -oP 'OHMYZSH_COMMIT="\K[^"]+' .devcontainer/scripts/install-tools.sh)
 
           echo "latest=$latest_sha" >> "$GITHUB_OUTPUT"
           echo "current=$current_sha" >> "$GITHUB_OUTPUT"
@@ -33,7 +33,7 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "Oh My Zsh update: $current_sha → $latest_sha"
-            sed -i "s|OHMYZSH_COMMIT=\"${current_sha}\"|OHMYZSH_COMMIT=\"${latest_sha}\"|" .devcontainer/Containerfile
+            sed -i "s|OHMYZSH_COMMIT=\"${current_sha}\"|OHMYZSH_COMMIT=\"${latest_sha}\"|" .devcontainer/scripts/install-tools.sh
           fi
 
       - name: Create pull request

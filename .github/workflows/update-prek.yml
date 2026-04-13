@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           latest_tag=$(gh api repos/j178/prek/releases/latest --jq '.tag_name')
-          current_tag=$(grep -oP 'PREK_VERSION="\K[^"]+' .devcontainer/Containerfile)
+          current_tag=$(grep -oP 'PREK_VERSION="\K[^"]+' .devcontainer/scripts/install-tools.sh)
 
           echo "latest=$latest_tag" >> "$GITHUB_OUTPUT"
           echo "current=$current_tag" >> "$GITHUB_OUTPUT"
@@ -35,7 +35,7 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "prek update: $current_tag → $latest_tag"
-            sed -i "s|PREK_VERSION=\"${current_tag}\"|PREK_VERSION=\"${latest_tag}\"|" .devcontainer/Containerfile
+            sed -i "s|PREK_VERSION=\"${current_tag}\"|PREK_VERSION=\"${latest_tag}\"|" .devcontainer/scripts/install-tools.sh
           fi
 
       - name: Create pull request
