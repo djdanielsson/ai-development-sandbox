@@ -10,7 +10,7 @@ set -euo pipefail
 
 PACKAGES=(
   podman curl git tar sudo procps-ng findutils gh zsh fzf eza zoxide
-  vim-enhanced gettext-envsubst jq unzip
+  vim-enhanced gettext-envsubst jq unzip nodejs
 )
 
 # shellcheck disable=SC1003
