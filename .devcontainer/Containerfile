@@ -29,8 +29,6 @@ ARG DNF_PACKAGES="\
     jq-1.8.1-1.fc43 \
     dnf5-5.2.18.0-2.fc43 \
     dnf5-plugins-5.2.18.0-2.fc43 \
-    nodejs-1:22.22.0-2.fc43 \
-    unzip-6.0-67.fc43 \
     libdnf5-5.2.18.0-2.fc43 \
     libdnf5-cli-5.2.18.0-2.fc43 \
     gnutls-3.8.12-1.fc43 \
