@@ -13,32 +13,32 @@ FROM docker.io/library/fedora:43@sha256:781b7642e8bf256e9cf75d2aa58d86f5cc695fd2
 # Fedora 43's `python3` package provides Python 3.14, and `nodejs` provides `npm`.
 
 ARG DNF_PACKAGES="\
-    curl-8.15.0-5.fc43 \
-    dnf5-5.2.18.0-2.fc43 \
-    dnf5-plugins-5.2.18.0-2.fc43 \
-    eza-0.23.4-2.fc43 \
+    curl-8.15.0-6.fc43 \
+    dnf5-5.2.18.0-3.fc43 \
+    dnf5-plugins-5.2.18.0-3.fc43 \
+    eza-0.23.4-3.fc43 \
     findutils-1:4.10.0-6.fc43 \
     fzf-0.70.0-1.fc43 \
     gettext-envsubst-0.25.1-2.fc43 \
     gh-2.87.3-1.fc43 \
     git-2.53.0-1.fc43 \
     gnutls-3.8.12-1.fc43 \
-    jq-1.8.1-1.fc43 \
-    libdnf5-5.2.18.0-2.fc43 \
-    libdnf5-cli-5.2.18.0-2.fc43 \
+    jq-1.8.1-3.fc43 \
+    libdnf5-5.2.18.0-3.fc43 \
+    libdnf5-cli-5.2.18.0-3.fc43 \
     libssh-0.11.4-1.fc43 \
     libtasn1-4.21.0-1.fc43 \
     nodejs-1:22.22.0-2.fc43 \
     podman-5:5.8.2-1.fc43 \
     procps-ng-4.0.4-7.fc43.1 \
-    python3-3.14.3-2.fc43 \
+    python3-3.14.4-1.fc43 \
     python3-pip-25.1.1-18.fc43 \
-    sudo-1.9.17-6.p2.fc43 \
+    sudo-1.9.17-7.p2.fc43 \
     systemd-standalone-sysusers-258.7-1.fc43 \
     tar-2:1.35-6.fc43 \
     tox-4.35.0-1.fc43 \
     unzip-6.0-67.fc43 \
-    uv-0.10.12-1.fc43 \
+    uv-0.11.6-2.fc43 \
     vim-enhanced-2:9.2.280-1.fc43 \
     zoxide-0.9.8-1.fc43 \
     zsh-5.9-19.fc43 \
