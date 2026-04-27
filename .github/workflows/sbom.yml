@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload Grype SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v4.35.1
+        uses: github/codeql-action/upload-sarif@v4.35.2
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
           category: container-vulnerability-scan
