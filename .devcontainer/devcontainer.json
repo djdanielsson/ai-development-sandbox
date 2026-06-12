@@ -27,6 +27,7 @@
     "source=aibox-bash-history,target=/root/bash-history,type=volume",
     "source=aibox-podman-storage,target=/var/lib/containers,type=volume",
     "source=${localEnv:HOME}/.default-pre-commit-config.yaml,target=/tmp/default-pre-commit-config.yaml,type=bind,ro",
+    "source=${localEnv:HOME}/.config/gcloud,target=/root/.config/gcloud,type=bind,ro",
     "source=${localEnv:HOME}/.zshrc,target=/root/.zshrc,type=bind,ro"
   ],
 
@@ -49,7 +50,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "eamodio.gitlens@2026.5.180633",
+        "eamodio.gitlens@2026.6.60255",
         "github.copilot@1.388.0"
       ]
     }

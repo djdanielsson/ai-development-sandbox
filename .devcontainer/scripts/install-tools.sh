@@ -12,15 +12,15 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 # --- Pinned versions (update workflows patch these lines) ---
-OHMYZSH_COMMIT="cb64103161b69d59e1efefeb761ac85564c44698"
-PREK_VERSION="v0.4.0"
+OHMYZSH_COMMIT="630a7c04c309a53f15e6a433c859867db17cc90e"
+PREK_VERSION="v0.4.4"
 KUBECTL_VERSION="v1.36.1"
 HELM_VERSION="v4.2.0"
-TERRAFORM_VERSION="v1.15.3"
-ARGOCD_VERSION="v3.4.2"
+TERRAFORM_VERSION="v1.15.5"
+ARGOCD_VERSION="v3.4.3"
 KUSTOMIZE_VERSION="v5.8.1"
 OC_VERSION="latest"
-VIRTCTL_VERSION="v1.8.2"
+VIRTCTL_VERSION="v1.8.3"
 TKN_VERSION="v0.45.0"
 
 # --- Architecture detection ---
@@ -111,6 +111,26 @@ TKN_VERSION_BARE="${TKN_VERSION#v}"
 curl -sSL "https://github.com/tektoncd/cli/releases/download/${TKN_VERSION}/tkn_${TKN_VERSION_BARE}_Linux_${ARCH_TKN}.tar.gz" \
   | tar -xz -C /usr/local/bin tkn
 tkn version
+
+# --- Google Cloud CLI (RPM) ---
+echo "==> Installing Google Cloud CLI..."
+GCLOUD_ARCH="x86_64"
+if [ "$ARCH_RAW" = "aarch64" ]; then
+  GCLOUD_ARCH="aarch64"
+fi
+tee /etc/yum.repos.d/google-cloud-sdk.repo <<EOM
+[google-cloud-cli]
+name=Google Cloud CLI
+baseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-${GCLOUD_ARCH}
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOM
+dnf install -y google-cloud-cli
+dnf clean all
+rm -rf /var/cache/dnf
+gcloud version
 
 # --- AI agent CLIs ---
 echo "==> Installing Cursor CLI..."
