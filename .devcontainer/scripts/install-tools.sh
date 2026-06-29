@@ -13,7 +13,7 @@ set -euo pipefail
 
 # --- Pinned versions (update workflows patch these lines) ---
 OHMYZSH_COMMIT="630a7c04c309a53f15e6a433c859867db17cc90e"
-PREK_VERSION="v0.4.4"
+PREK_VERSION="v0.4.5"
 KUBECTL_VERSION="v1.36.1"
 HELM_VERSION="v4.2.0"
 TERRAFORM_VERSION="v1.15.5"
