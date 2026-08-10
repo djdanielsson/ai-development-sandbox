@@ -5,7 +5,7 @@
 # resolves bare "fedora" to registry.fedoraproject.org which may not carry the same
 # digest as Docker Hub, causing "manifest unknown" errors.
 # To update manually: podman inspect docker.io/library/fedora:43 --format '{{.Digest}}'
-FROM docker.io/library/fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+FROM docker.io/library/fedora:44@sha256:a471bd8bf8e7e99812fd2f29fc950685d860b3d528b9f090443dbc1a0d2bad62
 
 # --- System Packages ---
 # NOTE: DNF packages are intentionally NOT version-pinned. Fedora container repos
@@ -46,6 +46,7 @@ ARG DNF_PACKAGES="\
 "
 
 RUN dnf install -y --setopt=install_weak_deps=False $DNF_PACKAGES && \
+    dnf update -y && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
@@ -66,7 +67,10 @@ RUN printf '[containers]\ncgroups = "disabled"\nlog_driver = "k8s-file"\n\n[engi
 # install-tools.sh so it can detect the build architecture at RUN time.
 # AUDIT: review each URL's install script before building.
 COPY scripts/install-tools.sh /tmp/install-tools.sh
-RUN chmod +x /tmp/install-tools.sh && /tmp/install-tools.sh && rm /tmp/install-tools.sh
+RUN chmod +x /tmp/install-tools.sh && /tmp/install-tools.sh && rm /tmp/install-tools.sh && \
+    dnf update -y && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
 
 # --- Container init script (runs at each container start) ---
 COPY scripts/container-init.sh /usr/local/bin/container-init.sh

@@ -46,6 +46,7 @@ jobs:
         id: grype
         with:
           sbom: sbom.cdx.json
+          config: .grype.yaml
           fail-build: false
           output-format: sarif
 

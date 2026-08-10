@@ -1,0 +1,8 @@
+# Grype ignore rules for the container SBOM scan.
+# See: https://oss.anchore.com/docs/guides/vulnerability/filter-results/
+
+ignore:
+  # Cursor CLI ships its own Node.js runtime; we cannot patch it independently.
+  - package:
+      location: "/root/.local/share/cursor-agent/**"
+    reason: "Bundled Node.js runtime from Cursor CLI installer"
