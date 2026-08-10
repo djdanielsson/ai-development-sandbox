@@ -5,7 +5,7 @@
 # resolves bare "fedora" to registry.fedoraproject.org which may not carry the same
 # digest as Docker Hub, causing "manifest unknown" errors.
 # To update manually: podman inspect docker.io/library/fedora:43 --format '{{.Digest}}'
-FROM docker.io/library/fedora:44@sha256:a471bd8bf8e7e99812fd2f29fc950685d860b3d528b9f090443dbc1a0d2bad62
+FROM docker.io/library/fedora:44@sha256:89f61a124414261868224666aa7fb8df1b78397a53623774bdfb105d1612b48b
 
 # --- System Packages ---
 # NOTE: DNF packages are intentionally NOT version-pinned. Fedora container repos
