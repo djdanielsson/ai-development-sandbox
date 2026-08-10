@@ -14,14 +14,14 @@ set -euo pipefail
 # --- Pinned versions (update workflows patch these lines) ---
 OHMYZSH_COMMIT="97b27bb2ec0701330b18c2d3e340b22e742b3fa8"
 PREK_VERSION="v0.4.4"
-KUBECTL_VERSION="v1.36.1"
-HELM_VERSION="v4.2.0"
-TERRAFORM_VERSION="v1.15.5"
-ARGOCD_VERSION="v3.4.3"
+KUBECTL_VERSION="v1.36.3"
+HELM_VERSION="v4.2.3"
+TERRAFORM_VERSION="v1.15.8"
+ARGOCD_VERSION="v3.5.0"
 KUSTOMIZE_VERSION="v5.8.1"
 OC_VERSION="latest"
-VIRTCTL_VERSION="v1.8.3"
-TKN_VERSION="v0.45.0"
+VIRTCTL_VERSION="v1.9.0"
+TKN_VERSION="v0.46.0"
 
 # --- Architecture detection ---
 ARCH_RAW=$(uname -m)
