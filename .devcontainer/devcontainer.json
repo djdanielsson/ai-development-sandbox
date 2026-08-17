@@ -50,7 +50,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "eamodio.gitlens@2026.8.80516",
+        "eamodio.gitlens@2026.8.150508",
         "github.copilot@1.388.0"
       ]
     }
