@@ -36,9 +36,31 @@ Create the following entries in your vault:
 
 ## Installation & Usage
 
-1. Copy this entire directory to your preferred config location (default in script is `~/.config/devcontainers/fedora-sandbox/`).
+### Option A: Symlink your clone (recommended)
+
+Keeps your install in sync with local edits and Dependabot merges — `aibox` also runs `git pull --ff-only` on every launch.
+
+```bash
+git clone <repo-url> ~/path/to/ai-development
+mkdir -p ~/.config/devcontainers
+ln -sfn ~/path/to/ai-development/.devcontainer ~/.config/devcontainers/fedora-sandbox
+```
+
+Append the `aibox` function (and helpers) from `.zshrc` into your `~/.zshrc`, then run `source ~/.zshrc`.
+
+Override the repo path with `AIBOX_REPO` if your clone lives elsewhere:
+
+```bash
+export AIBOX_REPO=~/path/to/ai-development
+```
+
+### Option B: Copy the config
+
+1. Copy the `.devcontainer` directory to `~/.config/devcontainers/fedora-sandbox/`.
 2. Append the `aibox` function from `.zshrc` into your `~/.zshrc`.
 3. Run `source ~/.zshrc`.
+
+Copied installs skip the automatic `git pull` (no repo detected).
 
 **To launch:**
 ```bash

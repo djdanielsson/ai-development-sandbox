@@ -46,7 +46,23 @@ __gitca() {
 # ==============================================================================
 # AI Box Launcher - Biometric Sandbox
 # ==============================================================================
+__aibox_sync_repo() {
+  local config_path="$HOME/.config/devcontainers/fedora-sandbox/devcontainer.json"
+  local config_dir="${config_path:h}"
+  local repo_root="${AIBOX_REPO:-${config_dir:A:h}}"
+
+  [[ -d "$repo_root/.git" ]] || return 0
+
+  echo "🔄 Pulling latest sandbox config from $repo_root..."
+  if ! git -C "$repo_root" pull --ff-only; then
+    echo "⚠️  git pull failed — continuing with current config."
+  fi
+}
+
 aibox() {
+  local CONFIG_PATH="$HOME/.config/devcontainers/fedora-sandbox/devcontainer.json"
+  __aibox_sync_repo
+
   echo "👆 Requesting Vaultwarden Touch ID..."
 
   local -x BW_SESSION=$(bwbio unlock --raw)
@@ -71,7 +87,6 @@ aibox() {
   local -x AI_SSH_KEY_B64=$(bw get notes "AI SSH Key" | base64 -b 0) || { echo "❌ Failed to fetch SSH key."; return 1; }
   local -x AI_GPG_KEY_B64=$(bw get notes "AI GPG Key" | base64 -b 0) || { echo "❌ Failed to fetch GPG key."; return 1; }
 
-  local CONFIG_PATH="$HOME/.config/devcontainers/fedora-sandbox/devcontainer.json"
   echo "🚀 Starting AI Sandbox for: $(pwd)"
 
   local rc=0
