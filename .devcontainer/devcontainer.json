@@ -22,8 +22,8 @@
 
   "mounts": [
     "source=aibox-cursor-state,target=/root/.cursor,type=volume",
-    "source=aibox-claude-state,target=/root/.claude,type=volume",
     "source=aibox-opencode-state,target=/root/.opencode,type=volume",
+    "source=aibox-pi-state,target=/root/.pi,type=volume",
     "source=aibox-bash-history,target=/root/bash-history,type=volume",
     "source=aibox-podman-storage,target=/var/lib/containers,type=volume",
     "source=${localEnv:HOME}/.default-pre-commit-config.yaml,target=/tmp/default-pre-commit-config.yaml,type=bind,ro",
@@ -39,7 +39,6 @@
   },
 
   "remoteEnv": {
-    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "CURSOR_API_KEY": "${localEnv:CURSOR_API_KEY}",
     "GITHUB_TOKEN": "${localEnv:AI_GITHUB_TOKEN}",
     "AIBOX_HOST_USER": "${localEnv:USER}"

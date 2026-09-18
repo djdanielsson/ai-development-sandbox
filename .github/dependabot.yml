@@ -1,7 +1,7 @@
 ---
 version: 2
 updates:
-  # Track base image updates in .devcontainer/Containerfile (fedora:43@sha256:...)
+  # Track base image updates in .devcontainer/Containerfile (fedora:44@sha256:...)
   - package-ecosystem: "docker"
     directory: "/.devcontainer"
     schedule:

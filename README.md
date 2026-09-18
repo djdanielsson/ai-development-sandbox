@@ -1,6 +1,6 @@
 # Ephemeral AI Sandbox (Fedora DevContainer)
 
-A secure, version-locked Podman DevContainer for AI agents (Cursor, Claude, OpenCode). Secrets are pulled from Vaultwarden via Touch ID and injected into the container's environment at runtime.
+A secure, version-locked Podman DevContainer for AI agent harnesses (Cursor, OpenCode, Pi). Secrets are pulled from Vaultwarden via Touch ID and injected into the container's environment at runtime.
 
 ## Prerequisites (macOS Host)
 
@@ -26,7 +26,6 @@ Create the following entries in your vault:
 
 | Vault Item Name | Type | Content |
 |---|---|---|
-| **Anthropic API** | Login | Password field: `<API_KEY>` |
 | **Cursor API** | Login | Password field: `<API_KEY>` |
 | **AI GitHub PAT** | Login | Password field: `<GITHUB_PAT>` |
 | *Custom Field* | Text | Name: `Git Name`, Value: `<Your Name>` |
@@ -41,23 +40,24 @@ Create the following entries in your vault:
 Keeps your install in sync with local edits and Dependabot merges — `aibox` also runs `git pull --ff-only` on every launch.
 
 ```bash
-git clone <repo-url> ~/path/to/ai-development
+git clone git@github.com:djdanielsson/ai-development.git ~/path/to/ai-development
+export AIBOX_REPO=~/path/to/ai-development
 mkdir -p ~/.config/devcontainers
-ln -sfn ~/path/to/ai-development/.devcontainer ~/.config/devcontainers/fedora-sandbox
+ln -sfn "$AIBOX_REPO/.devcontainer" ~/.config/devcontainers/fedora-sandbox
 ```
 
-Append the `aibox` function (and helpers) from `.zshrc` into your `~/.zshrc`, then run `source ~/.zshrc`.
-
-Override the repo path with `AIBOX_REPO` if your clone lives elsewhere:
+Add this line to your `~/.zshrc`, then run `source ~/.zshrc`:
 
 ```bash
-export AIBOX_REPO=~/path/to/ai-development
+source "$AIBOX_REPO/aibox.zsh"
 ```
+
+If your clone lives elsewhere, change `AIBOX_REPO` before running `ln`. Persist `AIBOX_REPO` in `~/.zshrc` (or `~/.zshenv`) so the `source` line keeps working in new shells.
 
 ### Option B: Copy the config
 
 1. Copy the `.devcontainer` directory to `~/.config/devcontainers/fedora-sandbox/`.
-2. Append the `aibox` function from `.zshrc` into your `~/.zshrc`.
+2. Copy `aibox.zsh` somewhere on your machine and `source` it from `~/.zshrc` (set `AIBOX_REPO` to that directory if you use the symlink install path above).
 3. Run `source ~/.zshrc`.
 
 Copied installs skip the automatic `git pull` (no repo detected).
@@ -72,19 +72,20 @@ Touch ID authenticates you, the container builds (or reuses cache), secrets are 
 
 ## Version Pinning Strategy
 
-Everything in this setup is pinned to enable reproducible builds and security auditing:
+Pinned components enable reproducible builds and security auditing. DNF system packages are intentionally **not** version-pinned — Fedora container repos only carry the latest release of each package, so pinning causes builds to fail once the repo rolls forward.
 
 | Component | How It's Pinned | How to Update |
 |---|---|---|
-| Base image (`fedora:43`) | Version tag + SHA256 digest in `Containerfile` | Dependabot opens PRs automatically |
-| DNF packages | Exact `name-version-release` strings | CI workflow opens PRs automatically (weekly) |
-| Oh My Zsh | Git commit SHA | CI workflow opens PRs automatically (weekly) |
-| prek | Release version tag | CI workflow opens PRs automatically (weekly) |
+| Base image (`fedora:44`) | Version tag + SHA256 digest in `Containerfile` | Dependabot opens PRs automatically |
+| DNF packages | Unpinned package names; `dnf update` at build time | Rebuild to pick up Fedora repo updates |
+| Oh My Zsh | Git commit SHA in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
+| prek | Release version tag in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
+| Infra CLIs (kubectl, helm, …) | Release version tags in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
 | VS Code extensions | Pinned `publisher.name@version` | CI workflow opens PRs automatically (weekly) |
 | GitHub SSH host keys | Embedded in `container-init.sh` | CI workflow verifies monthly, opens PR on rotation |
-| AI CLIs (Claude, Cursor, OpenCode) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
+| AI harnesses (Cursor, OpenCode, Pi) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
 
-**Note on AI CLI installers:** Claude, Cursor, and OpenCode are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
+**Note on AI harness installers:** Cursor, OpenCode, and Pi are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
 
 ## Keeping Dependencies Updated
 
@@ -100,9 +101,9 @@ This repo uses a combination of **Dependabot** and **GitHub Actions workflows** 
 
 | Workflow | Schedule | What It Updates |
 |---|---|---|
-| `update-dnf-versions.yml` | Weekly (Mon) | DNF package version pins in `Containerfile` |
-| `update-ohmyzsh.yml` | Weekly (Mon) | `OHMYZSH_COMMIT` SHA in `Containerfile` |
-| `update-prek.yml` | Weekly (Mon) | `PREK_VERSION` tag in `Containerfile` |
+| `update-ohmyzsh.yml` | Weekly (Mon) | `OHMYZSH_COMMIT` SHA in `install-tools.sh` |
+| `update-prek.yml` | Weekly (Mon) | `PREK_VERSION` tag in `install-tools.sh` |
+| `update-cli-tools.yml` | Weekly (Mon) | Infra CLI versions in `install-tools.sh` |
 | `update-extensions.yml` | Weekly (Mon) | Extension versions in `devcontainer.json` |
 | `verify-github-ssh-keys.yml` | Monthly (1st) | SSH host keys in `container-init.sh` |
 
@@ -114,7 +115,7 @@ Every push and PR runs:
 
 - **Pre-commit hooks** — trailing whitespace, EOF fixer, large file check, gitleaks
 - **ShellCheck** — static analysis of all shell scripts
-- **Container build** — validates the Containerfile builds successfully (catches broken version pins)
+- **Container build** — validates the Containerfile builds successfully
 
 ### SBOM & Vulnerability Scanning
 
@@ -123,14 +124,6 @@ On every push to `main` and on PRs, the CI:
 1. Builds the container image
 2. Generates a **CycloneDX SBOM** using [Syft](https://github.com/anchore/syft) (uploaded as a build artifact)
 3. Scans the SBOM for known vulnerabilities using [Grype](https://github.com/anchore/grype) (results uploaded to GitHub Security tab)
-
-### Manual Fallback
-
-For DNF packages, the update script can still be run manually inside a Fedora container:
-```bash
-bash scripts/update-dnf-versions.sh
-```
-Then paste the output into the Containerfile.
 
 ## Security Model
 

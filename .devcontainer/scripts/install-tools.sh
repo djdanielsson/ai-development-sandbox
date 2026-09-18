@@ -132,9 +132,17 @@ dnf clean all
 rm -rf /var/cache/dnf
 gcloud version
 
-# --- AI agent CLIs ---
+# --- AI agent harnesses (curl|bash — versions logged at build time) ---
 echo "==> Installing Cursor CLI..."
 curl --proto '=https' --tlsv1.2 -fsSL https://cursor.com/install | bash
 cursor --version 2>/dev/null || echo "WARNING: cursor version check unavailable"
+
+echo "==> Installing OpenCode CLI..."
+curl --proto '=https' --tlsv1.2 -fsSL https://opencode.ai/install | bash -s -- --no-modify-path
+opencode --version 2>/dev/null || echo "WARNING: opencode version check unavailable"
+
+echo "==> Installing Pi CLI..."
+curl --proto '=https' --tlsv1.2 -fsSL https://pi.dev/install.sh | sh
+pi --version 2>/dev/null || echo "WARNING: pi version check unavailable"
 
 echo "==> All tools installed."
