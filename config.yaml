@@ -4,4 +4,4 @@ sandbox:
   server_url: http://omnigent:8000
   podman:
     image: docker.io/library/omnigent-local:latest
-    network: omnigent-net
+    network: ai-development_default

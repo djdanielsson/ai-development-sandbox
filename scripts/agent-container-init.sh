@@ -17,6 +17,7 @@ if [[ -n "${AI_GITHUB_TOKEN:-}" ]]; then
   chmod 700 /root/.config/gh
   env -u GH_TOKEN gh auth login --hostname github.com --git-protocol https \
     --with-token < /run/omnigent-secrets/github_token >/dev/null
+  gh auth setup-git --hostname github.com
 fi
 
 # Pin GitHub's public host keys in the sandbox rather than trusting a
@@ -42,7 +43,6 @@ Host github.com
   UserKnownHostsFile /root/.ssh/known_hosts
 SSH_CONFIG
   chmod 600 /root/.ssh/config
-  git config --global url."git@github.com:".insteadOf "https://github.com/"
 fi
 
 if [[ -n "${AI_GPG_KEY_B64:-}" ]]; then

@@ -47,6 +47,8 @@ services:
     container_name: omnigent-host
     depends_on:
       - omnigent
+    healthcheck:
+      disable: true
     command: ["omni", "host", "http://omnigent:8000"]
     environment:
       OMNIGENT_AUTH_ENABLED: "0"
@@ -63,7 +65,3 @@ volumes:
   omnigent-data:
   opencode-auth:
     name: omnigent-opencode-auth
-
-networks:
-  default:
-    name: omnigent-net

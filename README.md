@@ -108,7 +108,8 @@ The managed `podman` provider creates a separate container for each **New
 Sandbox** session, using the local image and Podman socket. Choose **New
 Sandbox** in Omnigent to get a per-project container; selecting the always-on
 local runner host reuses the `omnigent-host` container. Project containers join
-the `omnigent-net` network so they can connect back to the server.
+the Compose network so they can connect back to the server. If you change the
+Compose project name, update `sandbox.podman.network` in `config.yaml` to match.
 
 The runner image also installs Codex CLI and mounts `${HOME}/.codex/auth.json`
 read-only at `/root/.codex/auth.json`. Sign in on the Mac with Codex's file
