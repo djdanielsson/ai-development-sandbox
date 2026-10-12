@@ -24,6 +24,8 @@
     "source=aibox-cursor-state,target=/root/.cursor,type=volume",
     "source=aibox-opencode-state,target=/root/.opencode,type=volume",
     "source=aibox-pi-state,target=/root/.pi,type=volume",
+    "source=aibox-codex-state,target=/root/.codex,type=volume",
+    "source=${localEnv:HOME}/.codex/auth.json,target=/root/.codex/auth.json,type=bind,ro",
     "source=aibox-bash-history,target=/root/bash-history,type=volume",
     "source=aibox-podman-storage,target=/var/lib/containers,type=volume",
     "source=${localEnv:HOME}/.default-pre-commit-config.yaml,target=/tmp/default-pre-commit-config.yaml,type=bind,ro",

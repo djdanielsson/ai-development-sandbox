@@ -145,4 +145,8 @@ echo "==> Installing Pi CLI..."
 curl --proto '=https' --tlsv1.2 -fsSL https://pi.dev/install.sh | sh
 pi --version 2>/dev/null || echo "WARNING: pi version check unavailable"
 
+echo "==> Installing Codex CLI..."
+CODEX_NON_INTERACTIVE=1 curl --proto '=https' --tlsv1.2 -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+codex --version 2>/dev/null || echo "WARNING: codex version check unavailable"
+
 echo "==> All tools installed."

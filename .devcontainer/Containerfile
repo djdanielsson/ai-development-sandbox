@@ -11,7 +11,8 @@ FROM docker.io/library/fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357
 # NOTE: DNF packages are intentionally NOT version-pinned. Fedora container repos
 # only carry the latest version of each package; pinning to a specific version
 # causes install failures once the repo rolls forward and the old version is removed.
-# Fedora's `python3` and `nodejs` packages provide Python and npm for Pi/OpenCode.
+# Fedora's `python3` package provides Python. `nodejs` + `nodejs-npm` provide
+# Node.js and npm for Pi/OpenCode (npm is not pulled in by `nodejs` alone on F44).
 
 ARG DNF_PACKAGES="\
     curl \
@@ -30,6 +31,7 @@ ARG DNF_PACKAGES="\
     libssh \
     libtasn1 \
     nodejs \
+    nodejs-npm \
     podman \
     procps-ng \
     python3 \
@@ -76,4 +78,4 @@ RUN chmod +x /tmp/install-tools.sh && /tmp/install-tools.sh && rm /tmp/install-t
 COPY scripts/container-init.sh /usr/local/bin/container-init.sh
 RUN chmod +x /usr/local/bin/container-init.sh
 
-ENV PATH="/root/.local/bin:/root/.opencode/bin:${PATH}"
+ENV PATH="/root/.pi/agent/bin:/root/.local/bin:/root/.opencode/bin:${PATH}"

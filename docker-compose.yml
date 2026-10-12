@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: omni-postgres
+    environment:
+      POSTGRES_USER: omnigent
+      POSTGRES_PASSWORD: omnigent_local_pass
+      POSTGRES_DB: omnigent
+    volumes:
+      - omni-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  omnigent:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: omnigent-local
+    container_name: omnigent-server
+    depends_on:
+      - postgres
+    security_opt:
+      - label=disable
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql://omnigent:omnigent_local_pass@postgres:5432/omnigent
+      DOCKER_HOST: unix:///var/run/docker.sock
+      OMNIGENT_CONFIG: /data/config.yaml
+      CODEX_AUTH_FILE: ${HOME}/.codex/auth.json
+      OPENCODE_AUTH_VOLUME: omnigent-opencode-auth
+      CURSOR_API_KEY: ${CURSOR_API_KEY:-}
+      OMNIGENT_CREDENTIALS_DIR: /run/omnigent-secrets
+      # Turn off multi-user mode so managed sandboxes can authenticate
+      OMNIGENT_AUTH_ENABLED: "0"
+    volumes:
+      - ${PODMAN_SOCKET:-/run/user/501/podman/podman.sock}:/var/run/docker.sock
+      - ${PROJECTS_DIR:-${HOME}/projects}:/projects
+      # Fix the internal paths to /data instead of /app/data
+      - omnigent-data:/data
+      - ./config.yaml:/data/config.yaml
+    tmpfs:
+      - /run/omnigent-secrets:rw,noexec,nosuid,size=1m,mode=0700
+    restart: unless-stopped
+
+  omnigent-host:
+    image: omnigent-local
+    container_name: omnigent-host
+    depends_on:
+      - omnigent
+    command: ["omni", "host", "http://omnigent:8000"]
+    environment:
+      OMNIGENT_AUTH_ENABLED: "0"
+      DO_NOT_TRACK: "1"
+      OMNIGENT_RUNNER_ENV_PASSTHROUGH: DO_NOT_TRACK
+    volumes:
+      - ${PROJECTS_DIR:-${HOME}/projects}:/projects
+      - ${HOME}/.codex/auth.json:/root/.codex/auth.json:ro
+      - opencode-auth:/root/.local/share/opencode
+    restart: unless-stopped
+
+volumes:
+  omni-db-data:
+  omnigent-data:
+  opencode-auth:
+    name: omnigent-opencode-auth
+
+networks:
+  default:
+    name: omnigent-net

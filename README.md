@@ -1,6 +1,6 @@
 # Ephemeral AI Sandbox (Fedora DevContainer)
 
-A secure, version-locked Podman DevContainer for AI agent harnesses (Cursor, OpenCode, Pi). Secrets are pulled from Vaultwarden via Touch ID and injected into the container's environment at runtime.
+A secure, version-locked Podman DevContainer for AI agent harnesses (Cursor, OpenCode, Pi, Codex). Secrets are pulled from Vaultwarden via Touch ID and injected into the container's environment at runtime.
 
 ## Prerequisites (macOS Host)
 
@@ -16,6 +16,21 @@ A secure, version-locked Podman DevContainer for AI agent harnesses (Cursor, Ope
 3. **Biometric Bridge (`bwbio`)**:
    ```bash
    brew install jeanregisser/tap/bitwarden-cli-bio
+   ```
+4. **Codex CLI** (for auth bind-mount into the sandbox):
+   ```bash
+   curl -fsSL https://chatgpt.com/codex/install.sh | sh
+   codex login
+   ```
+   The sandbox bind-mounts `~/.codex/auth.json` from your Mac. macOS Keychain
+   credentials are not visible inside the Linux container, so auth must be
+   file-based. If `~/.codex/auth.json` is missing after login, add this to
+   `~/.codex/config.toml` and sign in again:
+   ```toml
+   cli_auth_credentials_store = "file"
+   ```
+   ```bash
+   codex logout && codex login
    ```
 
 ## Vaultwarden Configuration
@@ -70,6 +85,74 @@ aibox
 
 Touch ID authenticates you, the container builds (or reuses cache), secrets are injected, Git signing is configured, and a terminal attaches.
 
+## Omnigent local server (Podman)
+
+The Compose stack runs the Omnigent server, database, and a separate runner-host
+container. The runner host registers with the server automatically, so Omnigent
+itself does not need to be installed on the Mac. The host container mounts the
+projects directory at `/projects` and stays running while the stack is up.
+
+Start or refresh the stack with `sh scripts/omnigent-up.sh` from this checkout.
+It requests Vaultwarden Touch ID, fetches the runner credentials, uses the
+installed Podman CLI to verify and mount the Podman machine's rootless Unix API
+socket, then starts the Omnigent server and runner host. The server talks to the
+Podman VM over that socket; its web port is published on localhost only.
+`PODMAN_MACHINE` and `OMNIGENT_PODMAN_SOCKET` can override the machine and its
+in-VM socket path.
+
+Since this Compose setup has `OMNIGENT_AUTH_ENABLED=0`, no Omnigent login step
+is needed. The project directory defaults to `~/projects`; set `PROJECTS_DIR`
+in the environment (or a Compose `.env` file) to override it.
+
+The managed `podman` provider creates a separate container for each **New
+Sandbox** session, using the local image and Podman socket. Choose **New
+Sandbox** in Omnigent to get a per-project container; selecting the always-on
+local runner host reuses the `omnigent-host` container. Project containers join
+the `omnigent-net` network so they can connect back to the server.
+
+The runner image also installs Codex CLI and mounts `${HOME}/.codex/auth.json`
+read-only at `/root/.codex/auth.json`. Sign in on the Mac with Codex's file
+credential store before starting the stack; the file must exist for the bind
+mount to work. Rebuild with `podman compose up -d --build` after changing the
+image. Codex defaults to `gpt-6-luna` with `xhigh` reasoning, configured in
+`codex-config.toml`.
+
+The runner image also installs OpenCode CLI, with OpenCode Zen's Muse Spark
+1.3 Contributor Free (`opencode/muse-spark-1.3-contributor-free`) as its
+default. To authenticate without installing OpenCode on the Mac, run
+`podman exec -it omnigent-host opencode auth login --provider opencode` and
+follow the prompt. Credentials are stored in a persistent Podman volume and
+mounted read-only into project sandboxes.
+
+Telemetry is disabled in the local image: Omnigent analytics and OpenTelemetry
+are off, Codex analytics and OTel export are off, and `DO_NOT_TRACK=1` is set
+for tools that honor the standard opt-out signal. This does not block normal
+network traffic needed for model inference, authentication, or repository access.
+
+The runner image also installs Cursor Agent CLI. The Omnigent helper fetches
+the `Cursor API` value from Vaultwarden and passes it to the runner and newly
+created project sandboxes as `CURSOR_API_KEY`; no Cursor login file is mounted.
+
+The Omnigent launcher reads `Cursor API`, `AI GitHub PAT`, `AI SSH Key`, and
+`AI GPG Key` from Vaultwarden at stack start. The GitHub PAT item's `Git Name`
+and `Git Email` fields configure commits. GitHub authentication is passed to
+new project sandboxes as `GH_TOKEN`; private keys are imported into the
+sandbox's private home only when that sandbox starts. The launcher sends the
+values through stdin into a memory-backed directory in the Omnigent server
+container; they are not baked into the image or stored in this repository. Run
+the helper again after unlocking Vaultwarden to refresh these runtime values.
+
+Managed project sandboxes also inherit the current versions of `kubectl`, Helm,
+Terraform, Argo CD, Kustomize, `oc`, `virtctl`, `tkn`, GitHub CLI, zsh/Oh My Zsh,
+eza, fzf, zoxide, vim, jq, uv/tox, and Node.js/npm. These resolve to the latest
+available releases when the image is built; rebuild with
+`podman compose up -d --build` to refresh them. Podman itself is intentionally
+not installed in the runner image (no Podman-in-Podman).
+
+The regular Codex agent keeps the default from `codex-config.toml`
+(`gpt-6-luna`, `xhigh`); OpenCode has its separate default in
+`opencode-config.json`.
+
 ## Version Pinning Strategy
 
 Pinned components enable reproducible builds and security auditing. DNF system packages are intentionally **not** version-pinned — Fedora container repos only carry the latest release of each package, so pinning causes builds to fail once the repo rolls forward.
@@ -83,9 +166,9 @@ Pinned components enable reproducible builds and security auditing. DNF system p
 | Infra CLIs (kubectl, helm, …) | Release version tags in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
 | VS Code extensions | Pinned `publisher.name@version` | CI workflow opens PRs automatically (weekly) |
 | GitHub SSH host keys | Embedded in `container-init.sh` | CI workflow verifies monthly, opens PR on rotation |
-| AI harnesses (Cursor, OpenCode, Pi) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
+| AI harnesses (Cursor, OpenCode, Pi, Codex) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
 
-**Note on AI harness installers:** Cursor, OpenCode, and Pi are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
+**Note on AI harness installers:** Cursor, OpenCode, Pi, and Codex are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
 
 ## Keeping Dependencies Updated
 

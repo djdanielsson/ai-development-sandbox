@@ -1,0 +1,7 @@
+sandbox:
+  host_type: managed
+  provider: podman
+  server_url: http://omnigent:8000
+  podman:
+    image: docker.io/library/omnigent-local:latest
+    network: omnigent-net
