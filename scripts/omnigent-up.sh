@@ -42,7 +42,62 @@ if ! podman machine ssh "$MACHINE" curl --connect-timeout 2 --max-time 3 -fsS \
   exit 1
 fi
 
-PODMAN_SOCKET="$PODMAN_SOCKET" podman compose up -d --build
+BASE_IMAGE=ghcr.io/omnigent-ai/omnigent-server:latest
+
+check_base_image_update() {
+  local_arch=$(podman info --format '{{.Host.Arch}}')
+  case "$local_arch" in
+    aarch64) local_arch=arm64 ;;
+    x86_64) local_arch=amd64 ;;
+  esac
+
+  if ! remote_manifest=$(podman manifest inspect "$BASE_IMAGE" 2>/dev/null); then
+    echo "Could not check for an Omnigent server image update; continuing with the installed version." >&2
+    return 0
+  fi
+
+  remote_manifest_digest=$(printf '%s' "$remote_manifest" | jq -r \
+    --arg arch "$local_arch" \
+    '.manifests[]? | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest' \
+    | head -n 1)
+  if [ -n "$remote_manifest_digest" ] && [ "$remote_manifest_digest" != "null" ]; then
+    if ! remote_image_manifest=$(podman manifest inspect "$BASE_IMAGE@$remote_manifest_digest" 2>/dev/null); then
+      echo "Could not inspect the latest Omnigent image; continuing with the installed version." >&2
+      return 0
+    fi
+    remote_config_digest=$(printf '%s' "$remote_image_manifest" | jq -r '.config.digest // empty')
+  else
+    remote_config_digest=$(printf '%s' "$remote_manifest" | jq -r '.config.digest // empty')
+  fi
+  if [ -z "$remote_config_digest" ]; then
+    echo "Could not identify the Omnigent image for architecture $local_arch; continuing with the installed version." >&2
+    return 0
+  fi
+
+  local_config_digest=$(podman image inspect "$BASE_IMAGE" --format '{{.Id}}' 2>/dev/null || true)
+  if [ -n "$local_config_digest" ] && [ "$local_config_digest" = "$remote_config_digest" ]; then
+    echo "Omnigent server image is up to date."
+    return 0
+  fi
+
+  echo "A newer Omnigent server image is available."
+  printf "Pull and install it now? [y/N] "
+  read answer || answer=
+  case "$answer" in
+    y|Y|yes|YES|Yes)
+      echo "Pulling the latest Omnigent server image and rebuilding the stack..."
+      podman pull "$BASE_IMAGE"
+      PODMAN_SOCKET="$PODMAN_SOCKET" podman compose build
+      ;;
+    *)
+      echo "Keeping the installed Omnigent server image."
+      ;;
+  esac
+}
+
+check_base_image_update
+PODMAN_SOCKET="$PODMAN_SOCKET" podman compose up -d
+sh scripts/omnigent-reconnect.sh
 
 # Keep secret values off the long-lived runner's container environment/config.
 # Send them over stdin into a tmpfs inside omnigent-server instead.

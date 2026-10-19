@@ -5,3 +5,9 @@ sandbox:
   podman:
     image: docker.io/library/omnigent-local:latest
     network: ai-development_default
+
+# Server-wide defaults apply to new sessions, including child sessions.
+policies:
+  same_subagent_model:
+    type: function
+    function: omnigent_same_subagent_model.same_subagent_model_policy

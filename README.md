@@ -100,6 +100,16 @@ Podman VM over that socket; its web port is published on localhost only.
 `PODMAN_MACHINE` and `OMNIGENT_PODMAN_SOCKET` can override the machine and its
 in-VM socket path.
 
+If Omnigent marks sessions as disconnected after the computer sleeps, run
+`sh scripts/omnigent-reconnect.sh`. It lists running managed session containers
+and restarts `omnigent-host`, which runs the `omni host` registration command
+again while leaving the session containers running.
+
+Archiving a managed session stops its sandbox container and preserves its
+history. Every run of `sh scripts/omnigent-up.sh` checks the upstream Omnigent
+server image and asks before pulling and rebuilding when a newer version is
+available. The stop-before-archive behavior is included in the current server.
+
 Since this Compose setup has `OMNIGENT_AUTH_ENABLED=0`, no Omnigent login step
 is needed. The project directory defaults to `~/projects`; set `PROJECTS_DIR`
 in the environment (or a Compose `.env` file) to override it.
@@ -153,6 +163,19 @@ not installed in the runner image (no Podman-in-Podman).
 The regular Codex agent keeps the default from `codex-config.toml`
 (`gpt-6-luna`, `xhigh`); OpenCode has its separate default in
 `opencode-config.json`.
+
+### Sub-agent model policy
+
+The Omnigent server applies `same_subagent_model` by default. It allows a
+sub-agent launch that leaves model and harness selection to Omnigent, and asks
+for approval when a launch explicitly selects a different or unverifiable
+model/harness. Approve that exception only when the user or an applicable
+skill directly requested it. The policy checks both `sys_session_send` and
+`sys_session_create` calls.
+
+The policy handler is bundled into the local server image, and its default
+attachment is configured in `config.yaml`. Rebuild and restart the server with `podman compose up -d
+--build omnigent` to activate changes to the policy code or registration.
 
 ## Version Pinning Strategy
 

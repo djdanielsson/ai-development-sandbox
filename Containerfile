@@ -23,6 +23,10 @@ COPY scripts/agent-container-init.sh /usr/local/bin/agent-container-init.sh
 COPY scripts/write-omnigent-secrets.py /usr/local/bin/write-omnigent-secrets.py
 RUN chmod 0755 /usr/local/bin/agent-container-init.sh /usr/local/bin/write-omnigent-secrets.py
 
+# Register the server-wide sub-agent model/harness policy.
+COPY policies/same_subagent_model.py /opt/omnigent-local-policies/omnigent_same_subagent_model.py
+ENV PYTHONPATH="/opt/omnigent-local-policies:${PYTHONPATH}"
+
 # Install the local Podman managed-sandbox provider.
 COPY podman-provider /tmp/omnigent-podman-provider
 RUN pip install /tmp/omnigent-podman-provider && \
