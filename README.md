@@ -101,9 +101,12 @@ Podman VM over that socket; its web port is published on localhost only.
 in-VM socket path.
 
 If Omnigent marks sessions as disconnected after the computer sleeps, run
-`sh scripts/omnigent-reconnect.sh`. It lists running managed session containers
-and restarts `omnigent-host`, which runs the `omni host` registration command
-again while leaving the session containers running.
+`sh scripts/omnigent-reconnect.sh`. It finds running managed Podman session
+containers, starts a reconnect daemon for each offline host without stopping
+the existing host or its runner processes, and waits for the server to report
+the host online. This local-stack recovery uses the same host identity through
+the local single-user server path when a managed launch token has expired. It
+refuses that fallback if the server is not in local single-user mode.
 
 Archiving a managed session stops its sandbox container and preserves its
 history. Every run of `sh scripts/omnigent-up.sh` checks the upstream Omnigent
@@ -155,10 +158,18 @@ the helper again after unlocking Vaultwarden to refresh these runtime values.
 
 Managed project sandboxes also inherit the current versions of `kubectl`, Helm,
 Terraform, Argo CD, Kustomize, `oc`, `virtctl`, `tkn`, GitHub CLI, zsh/Oh My Zsh,
-eza, fzf, zoxide, vim, jq, uv/tox, and Node.js/npm. These resolve to the latest
-available releases when the image is built; rebuild with
+eza, fzf, zoxide, vim, jq, uv/tox, and Node.js/npm. The pinned `prek` release
+is installed alongside them and updated by the weekly prek workflow. Rebuild with
 `podman compose up -d --build` to refresh them. Podman itself is intentionally
 not installed in the runner image (no Podman-in-Podman).
+
+Every sandbox uses a global Git pre-commit hook backed by `prek`. A repository's
+`prek.toml`, `.pre-commit-config.yaml`, or `.pre-commit-config.yml` takes
+precedence, including configs in nested monorepo projects. If none is present,
+the hook uses
+`config/prek-default.yaml` from this repo's image, with trailing-whitespace,
+end-of-file, large-file, and Gitleaks checks. The fallback config is not copied
+into the project, so it does not change that repository's tracked files.
 
 The regular Codex agent keeps the default from `codex-config.toml`
 (`gpt-6-luna`, `xhigh`); OpenCode has its separate default in
@@ -166,12 +177,13 @@ The regular Codex agent keeps the default from `codex-config.toml`
 
 ### Sub-agent model policy
 
-The Omnigent server applies `same_subagent_model` by default. It allows a
-sub-agent launch that leaves model and harness selection to Omnigent, and asks
-for approval when a launch explicitly selects a different or unverifiable
-model/harness. Approve that exception only when the user or an applicable
-skill directly requested it. The policy checks both `sys_session_send` and
-`sys_session_create` calls.
+The Omnigent server applies `same_subagent_model` by default. It denies any
+resolved model whose name contains `astra`, including routed and sub-agent
+requests. It allows a sub-agent launch that leaves model and harness selection
+to Omnigent, and asks for approval when a launch explicitly selects a different
+or unverifiable model/harness. Approve that exception only when the user or an
+applicable skill directly requested it. The policy checks both
+`sys_session_send` and `sys_session_create` calls.
 
 The policy handler is bundled into the local server image, and its default
 attachment is configured in `config.yaml`. Rebuild and restart the server with `podman compose up -d
@@ -186,7 +198,7 @@ Pinned components enable reproducible builds and security auditing. DNF system p
 | Base image (`fedora:44`) | Version tag + SHA256 digest in `Containerfile` | Dependabot opens PRs automatically |
 | DNF packages | Unpinned package names; `dnf update` at build time | Rebuild to pick up Fedora repo updates |
 | Oh My Zsh | Git commit SHA in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
-| prek | Release version tag in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
+| prek | Release version tag in `scripts/install-omnigent-agent-tools.sh` | CI workflow opens PRs automatically (weekly) |
 | Infra CLIs (kubectl, helm, …) | Release version tags in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
 | VS Code extensions | Pinned `publisher.name@version` | CI workflow opens PRs automatically (weekly) |
 | GitHub SSH host keys | Embedded in `container-init.sh` | CI workflow verifies monthly, opens PR on rotation |
@@ -209,7 +221,7 @@ This repo uses a combination of **Dependabot** and **GitHub Actions workflows** 
 | Workflow | Schedule | What It Updates |
 |---|---|---|
 | `update-ohmyzsh.yml` | Weekly (Mon) | `OHMYZSH_COMMIT` SHA in `install-tools.sh` |
-| `update-prek.yml` | Weekly (Mon) | `PREK_VERSION` tag in `install-tools.sh` |
+| `update-prek.yml` | Weekly (Mon) | `PREK_VERSION` tag in `scripts/install-omnigent-agent-tools.sh` |
 | `update-cli-tools.yml` | Weekly (Mon) | Infra CLI versions in `install-tools.sh` |
 | `update-extensions.yml` | Weekly (Mon) | Extension versions in `devcontainer.json` |
 | `verify-github-ssh-keys.yml` | Monthly (1st) | SSH host keys in `container-init.sh` |

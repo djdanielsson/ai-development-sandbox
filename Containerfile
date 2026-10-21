@@ -23,6 +23,13 @@ COPY scripts/agent-container-init.sh /usr/local/bin/agent-container-init.sh
 COPY scripts/write-omnigent-secrets.py /usr/local/bin/write-omnigent-secrets.py
 RUN chmod 0755 /usr/local/bin/agent-container-init.sh /usr/local/bin/write-omnigent-secrets.py
 
+# Run prek on commits in every repository. A repository's own config takes
+# precedence; repositories without one use the shared starter config.
+COPY config/prek-default.yaml /usr/local/share/prek/default-config.yaml
+COPY scripts/prek-pre-commit-hook /root/.githooks/pre-commit
+RUN chmod 0755 /root/.githooks/pre-commit && \
+    git config --global core.hooksPath /root/.githooks
+
 # Register the server-wide sub-agent model/harness policy.
 COPY policies/same_subagent_model.py /opt/omnigent-local-policies/omnigent_same_subagent_model.py
 ENV PYTHONPATH="/opt/omnigent-local-policies:${PYTHONPATH}"

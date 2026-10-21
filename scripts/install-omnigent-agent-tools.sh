@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PREK_VERSION="v0.5.6"
+
 ARCH_RAW=$(uname -m)
 case "$ARCH_RAW" in
   x86_64)
@@ -112,6 +114,11 @@ echo '==> Installing latest uv and tox'
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install --upgrade tox
 
+echo "==> Installing prek ${PREK_VERSION}"
+curl --proto '=https' --tlsv1.2 -LsSf \
+  "https://github.com/j178/prek/releases/download/${PREK_VERSION}/prek-installer.sh" \
+  | env PREK_INSTALL_DIR=/usr/local/bin PREK_NO_MODIFY_PATH=1 sh
+
 echo '==> Installing latest Oh My Zsh'
 git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git /root/.oh-my-zsh
 
@@ -134,6 +141,7 @@ vim --version | head -n 1
 jq --version
 uv --version
 tox --version
+prek --version
 node --version
 npm --version
 

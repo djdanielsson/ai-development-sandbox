@@ -13,6 +13,10 @@ _CONTAINER_KEYS = {"args", "config", "executor", "llm", "spec"}
 _UNKNOWN_AGENT_KEYS = {"config_path"}
 
 
+def _is_blocked_model(value: object) -> bool:
+    return isinstance(value, str) and "astra" in value.casefold()
+
+
 def _canonical_agent(value: object) -> str:
     if not isinstance(value, str):
         return ""
@@ -63,13 +67,27 @@ def _find_explicit_values(
 
 
 def same_subagent_model_policy(event: Mapping[str, Any]) -> dict[str, str] | None:
-    """Ask before dispatching a sub-agent with a different model or harness.
+    """Block Astra and ask before changing a sub-agent's model or harness.
 
     An omitted model or harness is allowed through and left to Omnigent's
     normal inheritance/default behavior. A mismatch requires user approval;
     approve it only when the user or an applicable skill explicitly requested
-    that different model or harness.
+    that different model or harness. Any resolved model name containing
+    ``astra`` is denied before the model request is sent.
     """
+    if event.get("type") == "llm_request":
+        data = event.get("data")
+        if isinstance(data, Mapping) and _is_blocked_model(data.get("model")):
+            model = data.get("model")
+            return {
+                "result": "DENY",
+                "reason": (
+                    f"Model {model!r} is blocked by the server policy. "
+                    "Choose a non-Astra model."
+                ),
+            }
+        return None
+
     target = event.get("target")
     if event.get("type") != "tool_call" or target not in _DISPATCH_TOOLS:
         return None
@@ -91,6 +109,11 @@ def same_subagent_model_policy(event: Mapping[str, Any]) -> dict[str, str] | Non
         mismatches.append("config_path (custom agent model/harness cannot be verified)")
 
     for path, value in _find_explicit_values(arguments, _MODEL_KEYS):
+        if _is_blocked_model(value):
+            return {
+                "result": "DENY",
+                "reason": f"{path} selects blocked model {value!r}; choose a non-Astra model.",
+            }
         if not isinstance(value, str) or not current_model:
             mismatches.append(f"{path}={value!r} (current model is unknown)")
         elif value.strip().casefold() != str(current_model).strip().casefold():
@@ -121,10 +144,10 @@ POLICY_REGISTRY = [
     {
         "handler": "omnigent_same_subagent_model.same_subagent_model_policy",
         "kind": "callable",
-        "name": "Keep sub-agents on the current model",
+        "name": "Block Astra and keep sub-agents on the current model",
         "description": (
-            "Asks before a sub-agent dispatch specifies a different or "
-            "unverifiable model or harness."
+            "Blocks all Astra model requests and asks before a sub-agent "
+            "dispatch specifies a different or unverifiable model or harness."
         ),
         "params_schema": {"type": "object", "properties": {}},
     }
