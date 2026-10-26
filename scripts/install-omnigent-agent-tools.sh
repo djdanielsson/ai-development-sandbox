@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PREK_VERSION="v0.5.6"
+PREK_VERSION="v0.5.7"
 
 ARCH_RAW=$(uname -m)
 case "$ARCH_RAW" in
