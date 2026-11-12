@@ -1,3 +1,4 @@
 __pycache__/
 *.py[cod]
 /docker-compose.netbird.yml
+/certs/redhat-internal-root-ca.crt

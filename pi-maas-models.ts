@@ -90,7 +90,7 @@ export default async function (pi: ExtensionAPI) {
     name: "Red Hat MaaS",
     baseUrl: BASE_URL,
     api: "openai-completions",
-    apiKey: "MAAS_API_KEY",
+    apiKey: "$MAAS_API_KEY",
     models: models.map(toPiModel),
   });
 }

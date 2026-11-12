@@ -32,6 +32,7 @@ RUN chmod 0755 /root/.githooks/pre-commit && \
 
 # Register the server-wide sub-agent model/harness policy.
 COPY policies/same_subagent_model.py /opt/omnigent-local-policies/omnigent_same_subagent_model.py
+COPY policies/sitecustomize.py /opt/omnigent-local-policies/sitecustomize.py
 ENV PYTHONPATH="/opt/omnigent-local-policies:${PYTHONPATH}"
 
 # Install the local Podman managed-sandbox provider.
@@ -67,3 +68,13 @@ RUN curl --proto '=https' --tlsv1.2 -fsSL https://cursor.com/install | bash && \
     ln -sf /opt/venv/bin/omni /usr/local/bin/omni && \
     ln -sf /opt/venv/bin/omni /usr/local/bin/omnigent && \
     omni --version
+
+# Omnigent's managed-host config writer invokes `python3` from a login shell.
+# Install its PyYAML dependency into the system interpreter's site-packages.
+RUN system_python_site="$(/usr/local/bin/python3 -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" && \
+    /opt/venv/bin/pip install --no-deps --target "$system_python_site" PyYAML
+
+# Trust the verified Red Hat internal root for MaaS TLS connections.
+COPY certs/redhat-internal-root-ca.crt /usr/local/share/ca-certificates/redhat-internal-root-ca.crt
+RUN update-ca-certificates
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/redhat-internal-root-ca.crt

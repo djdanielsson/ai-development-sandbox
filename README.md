@@ -143,7 +143,10 @@ The runner image installs Pi with a Red Hat MaaS provider configured for
 provider's `/models` endpoint at startup and lists the returned models. Pi
 defaults to `deepseek-4-1-flash`, which remains available if model discovery is
 unavailable. The Omnigent launcher fetches the `maas` password from Vaultwarden
-and passes it to new project sandboxes as `MAAS_API_KEY`.
+and passes it to new project sandboxes as `MAAS_API_KEY`. The runner image trusts
+the verified Red Hat internal root CA so Pi can validate the MaaS TLS chain.
+Before building, provision that CA locally at
+`certs/redhat-internal-root-ca.crt`; the certificate is excluded from Git.
 
 The runner image also installs OpenCode CLI, with OpenCode Zen's Muse Spark
 1.3 Contributor Free (`opencode/muse-spark-1.3-contributor-free`) as its
