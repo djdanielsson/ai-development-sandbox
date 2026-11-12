@@ -46,6 +46,13 @@ RUN CODEX_NON_INTERACTIVE=1 curl --proto '=https' --tlsv1.2 -fsSL \
 
 COPY codex-config.toml /root/.codex/config.toml
 
+# Install Pi and the dynamic MaaS model catalog extension.
+RUN npm install --global --ignore-scripts @earendil-works/pi-coding-agent && \
+    mkdir -p /root/.pi/agent/extensions && \
+    pi --version
+COPY pi-maas-models.ts /root/.pi/agent/extensions/maas-models.ts
+COPY pi-settings.json /root/.pi/agent/settings.json
+
 # Install OpenCode CLI and set the OpenCode Zen default model.
 RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && \
     opencode --version

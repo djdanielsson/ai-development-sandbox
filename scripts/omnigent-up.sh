@@ -9,7 +9,7 @@ for command_name in bw bwbio jq podman; do
 done
 
 cleanup_secrets() {
-  unset BW_SESSION CURSOR_API_KEY AI_GITHUB_TOKEN AI_GIT_NAME AI_GIT_EMAIL
+  unset BW_SESSION CURSOR_API_KEY MAAS_API_KEY AI_GITHUB_TOKEN AI_GIT_NAME AI_GIT_EMAIL
   unset AI_SSH_KEY_B64 AI_GPG_KEY_B64
 }
 trap cleanup_secrets EXIT HUP INT TERM
@@ -22,8 +22,12 @@ if [ -z "$BW_SESSION" ] || printf '%s' "$BW_SESSION" | grep -qi 'error'; then
 fi
 export BW_SESSION
 
+echo "Syncing Vaultwarden changes..."
+bw sync >/dev/null
+
 echo "Fetching runner credentials from Vaultwarden..."
 CURSOR_API_KEY=$(bw get password "Cursor API")
+MAAS_API_KEY=$(bw get password "maas")
 AI_GITHUB_TOKEN=$(bw get password "AI GitHub PAT")
 GITHUB_PAT_JSON=$(bw get item "AI GitHub PAT")
 AI_GIT_NAME=$(printf '%s' "$GITHUB_PAT_JSON" | jq -r '.fields[]? | select(.name == "Git Name") | .value // empty')
@@ -97,12 +101,12 @@ check_base_image_update() {
 
 check_base_image_update
 PODMAN_SOCKET="$PODMAN_SOCKET" podman compose up -d
-sh scripts/omnigent-reconnect.sh
 
 # Keep secret values off the long-lived runner's container environment/config.
 # Send them over stdin into a tmpfs inside omnigent-server instead.
 printf '%s\n' \
   "$CURSOR_API_KEY" \
+  "$MAAS_API_KEY" \
   "$AI_GITHUB_TOKEN" \
   "$AI_SSH_KEY_B64" \
   "$AI_GPG_KEY_B64" \
@@ -111,3 +115,18 @@ printf '%s\n' \
   | podman exec -i omnigent-server /usr/local/bin/write-omnigent-secrets.py
 
 echo "Runner credentials loaded into tmpfs; new project sandboxes can now use them."
+
+echo "Waiting for the Omnigent server to become healthy..."
+server_wait_attempt=0
+until podman exec omnigent-server python -c \
+  'import httpx; httpx.get("http://127.0.0.1:8000/health", timeout=2.0).raise_for_status()' \
+  >/dev/null 2>&1; do
+  server_wait_attempt=$((server_wait_attempt + 1))
+  if [ "$server_wait_attempt" -ge 60 ]; then
+    echo "Omnigent server did not become healthy within 60 seconds." >&2
+    exit 1
+  fi
+  sleep 1
+done
+
+sh scripts/omnigent-reconnect.sh

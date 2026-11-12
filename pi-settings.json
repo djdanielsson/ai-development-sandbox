@@ -1,0 +1,5 @@
+{
+  "$schema": "https://pi.dev/schemas/settings.schema.json",
+  "defaultProvider": "maas",
+  "defaultModel": "deepseek-4-1-flash"
+}

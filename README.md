@@ -42,6 +42,7 @@ Create the following entries in your vault:
 | Vault Item Name | Type | Content |
 |---|---|---|
 | **Cursor API** | Login | Password field: `<API_KEY>` |
+| **maas** | Login | Password field: `<MAAS_API_KEY>` |
 | **AI GitHub PAT** | Login | Password field: `<GITHUB_PAT>` |
 | *Custom Field* | Text | Name: `Git Name`, Value: `<Your Name>` |
 | *Custom Field* | Text | Name: `Git Email`, Value: `<Your Verified GitHub Email>` |
@@ -108,6 +109,12 @@ the host online. This local-stack recovery uses the same host identity through
 the local single-user server path when a managed launch token has expired. It
 refuses that fallback if the server is not in local single-user mode.
 
+To find running managed containers whose sessions were archived or deleted,
+run `sh scripts/omnigent-cleanup-stale-containers.sh`. Every unarchived session
+counts as active, including idle or failed sessions that may be resumed. The
+script reports candidates by default; pass `--apply` to stop them. It only
+stops containers and keeps Omnigent session history intact.
+
 Archiving a managed session stops its sandbox container and preserves its
 history. Every run of `sh scripts/omnigent-up.sh` checks the upstream Omnigent
 server image and asks before pulling and rebuilding when a newer version is
@@ -131,6 +138,13 @@ mount to work. Rebuild with `podman compose up -d --build` after changing the
 image. Codex defaults to `gpt-6-luna` with `xhigh` reasoning, configured in
 `codex-config.toml`.
 
+The runner image installs Pi with a Red Hat MaaS provider configured for
+`https://models.corp.redhat.com/oai/v1/chat/completions`. Pi queries the
+provider's `/models` endpoint at startup and lists the returned models. Pi
+defaults to `deepseek-4-1-flash`, which remains available if model discovery is
+unavailable. The Omnigent launcher fetches the `maas` password from Vaultwarden
+and passes it to new project sandboxes as `MAAS_API_KEY`.
+
 The runner image also installs OpenCode CLI, with OpenCode Zen's Muse Spark
 1.3 Contributor Free (`opencode/muse-spark-1.3-contributor-free`) as its
 default. To authenticate without installing OpenCode on the Mac, run
@@ -147,8 +161,8 @@ The runner image also installs Cursor Agent CLI. The Omnigent helper fetches
 the `Cursor API` value from Vaultwarden and passes it to the runner and newly
 created project sandboxes as `CURSOR_API_KEY`; no Cursor login file is mounted.
 
-The Omnigent launcher reads `Cursor API`, `AI GitHub PAT`, `AI SSH Key`, and
-`AI GPG Key` from Vaultwarden at stack start. The GitHub PAT item's `Git Name`
+The Omnigent launcher reads `Cursor API`, `maas`, `AI GitHub PAT`, `AI SSH Key`,
+and `AI GPG Key` from Vaultwarden at stack start. The GitHub PAT item's `Git Name`
 and `Git Email` fields configure commits. GitHub authentication is passed to
 new project sandboxes as `GH_TOKEN`; private keys are imported into the
 sandbox's private home only when that sandbox starts. The launcher sends the
@@ -202,9 +216,9 @@ Pinned components enable reproducible builds and security auditing. DNF system p
 | Infra CLIs (kubectl, helm, …) | Release version tags in `install-tools.sh` | CI workflow opens PRs automatically (weekly) |
 | VS Code extensions | Pinned `publisher.name@version` | CI workflow opens PRs automatically (weekly) |
 | GitHub SSH host keys | Embedded in `container-init.sh` | CI workflow verifies monthly, opens PR on rotation |
-| AI harnesses (Cursor, OpenCode, Pi, Codex) | Installed via `curl\|bash` (see note below) | Rebuild to pick up new versions |
+| AI harnesses (Cursor, OpenCode, Pi, Codex) | Cursor, OpenCode, Codex via vendor installers; Pi via floating npm package | Rebuild to pick up new versions |
 
-**Note on AI harness installers:** Cursor, OpenCode, Pi, and Codex are installed via vendor `curl|bash` scripts which cannot be version-pinned. The install script logs installed versions during build. Review the build log to audit what was installed.
+**Note on AI harness installers:** Cursor, OpenCode, and Codex use vendor installers that cannot be version-pinned. Pi is installed from the latest `@earendil-works/pi-coding-agent` npm release. The build logs installed versions for review.
 
 ## Keeping Dependencies Updated
 

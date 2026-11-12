@@ -10,6 +10,7 @@ from pathlib import Path
 
 NAMES = (
     "cursor_api_key",
+    "maas_api_key",
     "github_token",
     "ssh_key_b64",
     "gpg_key_b64",
@@ -21,7 +22,7 @@ NAMES = (
 def main() -> int:
     values = sys.stdin.buffer.read().splitlines()
     if len(values) != len(NAMES):
-        print("Expected six newline-delimited credential values.", file=sys.stderr)
+        print("Expected seven newline-delimited credential values.", file=sys.stderr)
         return 2
 
     directory = Path(os.environ.get("OMNIGENT_CREDENTIALS_DIR", "/run/omnigent-secrets"))

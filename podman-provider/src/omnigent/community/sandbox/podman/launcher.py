@@ -65,16 +65,24 @@ class PodmanSandboxLauncher(ExecModelHostLauncher):
 
         environment: dict[str, str] = {}
         bootstrap_environment: dict[str, str] = {}
+        runner_env_passthrough: list[str] = []
         if cursor_key := self._read_credential("cursor_api_key"):
             environment["CURSOR_API_KEY"] = cursor_key
+        if maas_key := self._read_credential("maas_api_key"):
+            environment["MAAS_API_KEY"] = maas_key
+            runner_env_passthrough.append("MAAS_API_KEY")
         if github_token := self._read_credential("github_token"):
             # Omnigent's managed runner launches agent commands in Bash
             # subprocesses. The host filters secrets by default, so explicitly
             # allow this credential through to session runners. Tmux-backed
             # interactive Zsh sessions may also lose inherited environment.
             environment["GH_TOKEN"] = github_token
-            environment["OMNIGENT_RUNNER_ENV_PASSTHROUGH"] = "GH_TOKEN"
+            runner_env_passthrough.append("GH_TOKEN")
             bootstrap_environment["AI_GITHUB_TOKEN"] = github_token
+        if runner_env_passthrough:
+            environment["OMNIGENT_RUNNER_ENV_PASSTHROUGH"] = ",".join(
+                runner_env_passthrough
+            )
         for env_name, file_name in (
             ("AI_SSH_KEY_B64", "ssh_key_b64"),
             ("AI_GPG_KEY_B64", "gpg_key_b64"),
