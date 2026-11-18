@@ -55,7 +55,7 @@ class SmolvmBridgeLauncher(ExecModelHostLauncher):
         except HTTPError as exc:
             raise click.ClickException(f"smolvm bridge HTTP error {exc.code}") from None
         except (OSError, URLError, ValueError):
-            raise click.ClickException("smolvm bridge unavailable; run sh scripts/omnigent-smolvm-bridge.sh start on the Mac") from None
+            raise click.ClickException("smolvm bridge unavailable; run sh omnigent/scripts/omnigent-smolvm-bridge.sh start on the Mac") from None
         if payload.get("error") == "gone":
             raise SandboxGoneError("Managed smolvm sandbox no longer exists")
         if payload.get("error"):

@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Resolve Compose and build paths from any working directory.
+stack_dir=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
+cd "$stack_dir"
+
 for command_name in bw bwbio jq podman; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "Required command not found: $command_name" >&2
@@ -65,7 +69,7 @@ if ! podman machine ssh "$MACHINE" curl --connect-timeout 2 --max-time 3 -fsS \
   exit 1
 fi
 
-BASE_IMAGE=ghcr.io/omnigent-ai/omnigent-server:latest
+BASE_IMAGE=$(sed -n 's/^FROM //p' Containerfile | head -n 1)
 
 check_base_image_update() {
   local_arch=$(podman info --format '{{.Host.Arch}}')
@@ -119,7 +123,7 @@ check_base_image_update() {
 }
 
 check_base_image_update
-if [ -f .smolvm-bridge/profile.json ]; then
+if [ -f ../.smolvm-bridge/profile.json ]; then
   sh scripts/omnigent-smolvm-bridge.sh start
 fi
 PODMAN_SOCKET="$PODMAN_SOCKET" podman compose up -d

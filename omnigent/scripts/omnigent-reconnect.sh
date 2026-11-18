@@ -49,7 +49,7 @@ echo "All running managed session hosts are connected."
 
 result=0
 reconnect_podman || result=1
-if [ -f "$script_dir/../.smolvm-bridge/profile.json" ]; then
+if [ -f "$script_dir/../../.smolvm-bridge/profile.json" ]; then
   python3 "$script_dir/../smolvm-bridge/maintenance.py" reconnect || result=1
 fi
 exit "$result"

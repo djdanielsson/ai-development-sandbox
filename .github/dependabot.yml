@@ -1,9 +1,9 @@
 ---
 version: 2
 updates:
-  # Track base image updates in .devcontainer/Containerfile (fedora:44@sha256:...)
+  # Track Fedora base image updates in devcontainer/Containerfile
   - package-ecosystem: "docker"
-    directory: "/.devcontainer"
+    directory: "/devcontainer"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -12,20 +12,6 @@ updates:
     labels:
       - "dependencies"
       - "docker"
-    cooldown:
-      default-days: 7
-
-  # Track devcontainer feature updates (if features are added later)
-  - package-ecosystem: "devcontainers"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    commit-message:
-      prefix: "devcontainer"
-    labels:
-      - "dependencies"
-      - "devcontainer"
     cooldown:
       default-days: 7
 

@@ -28,7 +28,7 @@ cleanup_phase() {
   failed=0
   podman exec -i omnigent-server python - "$phase" "$server_url" \
     < "$script_dir/omnigent-cleanup-stale-containers.py" || failed=1
-  if [ -f "$script_dir/../.smolvm-bridge/profile.json" ]; then
+  if [ -f "$script_dir/../../.smolvm-bridge/profile.json" ]; then
     python3 "$script_dir/../smolvm-bridge/maintenance.py" prune "$phase" || failed=1
   fi
   return "$failed"

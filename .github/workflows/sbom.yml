@@ -2,6 +2,7 @@
 name: "SBOM & Vulnerability Scan"
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -25,8 +26,8 @@ jobs:
       - name: Build container image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
-          context: .devcontainer
-          file: .devcontainer/Containerfile
+          context: devcontainer
+          file: devcontainer/Containerfile
           push: false
           load: true
           tags: ai-sandbox:sbom-scan
@@ -46,7 +47,7 @@ jobs:
         id: grype
         with:
           sbom: sbom.cdx.json
-          config: .grype.yaml
+          config: devcontainer/.grype.yaml
           fail-build: false
           output-format: sarif
 

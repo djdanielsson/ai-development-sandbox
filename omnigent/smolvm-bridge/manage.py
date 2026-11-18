@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.request import Request, ProxyHandler, build_opener
 
 REPO = Path(__file__).resolve().parent.parent
-ROOT = REPO / ".smolvm-bridge"
+ROOT = REPO.parent / ".smolvm-bridge"
 PYTHON = ROOT / "venv/bin/python"
 PROVIDER = "git+https://github.com/cidrblock/omnigent-smolvm-provider@65a85dcc857c32fc52b61dcfafb7a51764d137ec"
 
@@ -84,7 +84,7 @@ def refresh_auth():
 
 def start():
     if not (ROOT / "profile.json").is_file():
-        raise SystemExit("Run sh scripts/omnigent-smolvm-bridge.sh setup first.")
+        raise SystemExit("Run sh omnigent/scripts/omnigent-smolvm-bridge.sh setup first.")
     image_id = subprocess.check_output(["podman", "image", "inspect", "omnigent-local", "--format", "{{.Id}}"], text=True).strip()
     recorded = ROOT / "runner-image.id"
     if not recorded.exists() or recorded.read_text().strip() != image_id or not (ROOT / "runner-image.tar").is_file():
@@ -97,7 +97,7 @@ def start():
     except Exception:
         pass
     if not (ROOT / "runner-image.tar").is_file():
-        raise SystemExit("Run sh scripts/omnigent-smolvm-bridge.sh export-image first.")
+        raise SystemExit("Run sh omnigent/scripts/omnigent-smolvm-bridge.sh export-image first.")
     environment = dict(os.environ, SMOLVM_USAGE="0", DO_NOT_TRACK="1")
     environment["PATH"] = "/opt/homebrew/bin:/opt/homebrew/opt/e2fsprogs/sbin:" + environment.get("PATH", "")
     with (ROOT / "bridge.log").open("ab") as log:
@@ -142,7 +142,10 @@ def main():
         pid = int((ROOT / "bridge.pid").read_text())
         # Refuse a recycled PID belonging to another process.
         result = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True)
-        if str(REPO / "smolvm-bridge/host.py") not in result.stdout:
+        # A bridge started before the directory reorganization may still be
+        # running from the old source path. Its state directory is unchanged.
+        host_paths = [REPO / "smolvm-bridge/host.py", REPO.parent / "smolvm-bridge/host.py"]
+        if not any(str(path) in result.stdout for path in host_paths) or str(ROOT) not in result.stdout:
             raise SystemExit("Recorded PID no longer belongs to this bridge.")
         os.kill(pid, signal.SIGTERM)
         print("Bridge stopped; existing microVMs keep running.")

@@ -85,12 +85,12 @@ class DeleteTests(unittest.TestCase):
         for fail in [False, True]:
             with self.subTest(fail=fail), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                (root / "scripts").mkdir()
+                (root / "omnigent/scripts").mkdir(parents=True)
                 (root / ".smolvm-bridge").mkdir()
                 (root / ".smolvm-bridge/profile.json").write_text("{}")
-                script = root / "scripts/omnigent-cleanup-stale-containers.sh"
+                script = root / "omnigent/scripts/omnigent-cleanup-stale-containers.sh"
                 shutil.copyfile(maintenance.REPO / "scripts/omnigent-cleanup-stale-containers.sh", script)
-                (root / "scripts/omnigent-cleanup-stale-containers.py").write_text("")
+                (root / "omnigent/scripts/omnigent-cleanup-stale-containers.py").write_text("")
                 for executable in ["podman", "python3"]:
                     target = root / executable
                     target.write_text(f'#!{sys.executable}\nimport os,sys\nfrom pathlib import Path\nphase=next(a for a in sys.argv if a.startswith("--"))\nwith Path(os.environ["CLEANUP_TEST_LOG"]).open("a") as f: f.write(Path(sys.argv[0]).name+" "+phase+"\\n")\nsys.exit(1 if os.environ["CLEANUP_TEST_FAIL"]=="1" and phase=="--apply" and Path(sys.argv[0]).name=="podman" else 0)\n')

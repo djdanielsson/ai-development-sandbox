@@ -1,5 +1,5 @@
 # Host-side AI Sandbox launcher. Source from ~/.zshrc:
-#   source "$AIBOX_REPO/aibox.zsh"
+#   source "$AIBOX_REPO/devcontainer/aibox.zsh"
 
 __aibox_sync_repo() {
   local config_path="$HOME/.config/devcontainers/fedora-sandbox/devcontainer.json"

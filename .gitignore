@@ -1,5 +1,5 @@
 __pycache__/
 *.py[cod]
-/docker-compose.netbird.yml
-/certs/redhat-internal-root-ca.crt
+/omnigent/docker-compose.netbird.yml
+/omnigent/certs/redhat-internal-root-ca.crt
 /.smolvm-bridge/
