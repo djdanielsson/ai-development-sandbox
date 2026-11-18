@@ -28,7 +28,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
       - name: Merge bot updates after successful checks
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const merge = require('./.github/scripts/auto-merge.js');
