@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnigent-local-smolvm-bridge"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["omnigent>=0.21"]
+
+[project.entry-points."omnigent.sandbox_providers"]
+smolvm = "omnigent.community.sandbox.smolvm_bridge:get_contribution"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["omnigent.community.sandbox.smolvm_bridge*"]
+namespaces = true

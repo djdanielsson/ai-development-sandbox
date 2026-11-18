@@ -38,6 +38,7 @@ services:
       # Fix the internal paths to /data instead of /app/data
       - omnigent-data:/data
       - ./config.yaml:/data/config.yaml
+      - ./.smolvm-bridge/client:/run/omnigent-smolvm:ro
     tmpfs:
       - /run/omnigent-secrets:rw,noexec,nosuid,size=1m,mode=0700
     restart: unless-stopped

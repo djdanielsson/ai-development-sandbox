@@ -8,6 +8,7 @@ socket are available. The shell wrapper defaults to a report-only dry run.
 from __future__ import annotations
 
 import sys
+import json
 from typing import Any
 
 import docker
@@ -120,8 +121,49 @@ def active_session_host_names(
     return {host_names[host_id] for host_id in session_host_ids}
 
 
+def delete_stopped_containers(podman, api, server_url) -> int:
+    """Rescan after stopping; remove only stopped, owned, inactive containers."""
+    active_names = active_session_host_names(api, server_url)
+    containers = podman.containers.list(all=True, filters={"label": [
+        "io.omnigent.managed=true", "io.omnigent.provider=podman",
+    ]})
+    removed = 0
+    failed = False
+    for container in containers:
+        labels = container.labels or {}
+        name = labels.get("io.omnigent.session-name")
+        if not isinstance(name, str) or not name or name in active_names:
+            continue
+        if container.status not in {"exited", "dead", "stopped"}:
+            continue
+        # Recheck the API and labels immediately before a non-forced removal.
+        current_active = active_session_host_names(api, server_url)
+        if name in current_active:
+            print(f"Keeping {container.name}: its host now has an active session.")
+            continue
+        try:
+            container.reload()
+            labels = container.labels or {}
+            if (container.status not in {"exited", "dead", "stopped"}
+                    or labels.get("io.omnigent.managed") != "true"
+                    or labels.get("io.omnigent.provider") != "podman"
+                    or labels.get("io.omnigent.session-name") != name):
+                print(f"Keeping {container.name}: its state or ownership changed.")
+                continue
+            container.remove()  # No force, volume removal, or image pruning.
+            removed += 1
+            print(f"Removed stopped container {container.name} ({name}).")
+        except NotFound:
+            continue
+        except (APIError, DockerException) as exc:
+            failed = True
+            print(f"Could not remove {container.name}: {exc}", file=sys.stderr)
+    print(f"Removed {removed} stopped stale container(s).")
+    return int(failed)
+
+
 def main() -> int:
-    if len(sys.argv) != 3 or sys.argv[1] not in {"--dry-run", "--apply"}:
+    if len(sys.argv) != 3 or sys.argv[1] not in {"--dry-run", "--apply", "--active-hosts", "--delete-stopped"}:
         print("Usage: cleanup-helper.py [--dry-run|--apply] SERVER_URL", file=sys.stderr)
         return 2
 
@@ -142,9 +184,15 @@ def main() -> int:
                 return 1
 
             active_names = active_session_host_names(api, server_url)
+            if mode == "--active-hosts":
+                # Internal read-only snapshot shared by the native VM helper.
+                print(json.dumps(sorted(active_names)))
+                return 0
 
             podman = docker.from_env(timeout=30)
             try:
+                if mode == "--delete-stopped":
+                    return delete_stopped_containers(podman, api, server_url)
                 containers = podman.containers.list(
                     filters={
                         "label": [
@@ -237,7 +285,7 @@ def main() -> int:
             finally:
                 podman.close()
     except Exception as exc:  # noqa: BLE001 - report API/socket failures and fail closed
-        print(f"Cleanup aborted without stopping containers: {exc}", file=sys.stderr)
+        print(f"Cleanup aborted: {exc}", file=sys.stderr)
         return 1
 
 

@@ -7,16 +7,17 @@ if ! command -v podman >/dev/null 2>&1; then
 fi
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
+reconnect_podman() {
 server_url=${OMNIGENT_SERVER_URL:-http://omnigent:8000}
 containers=$(podman ps \
   --filter label=io.omnigent.managed=true \
   --filter label=io.omnigent.provider=podman \
   --filter status=running \
-  --format '{{.ID}} {{.Names}} {{.Label "io.omnigent.session-name"}}')
+  --format '{{.ID}} {{.Names}} {{.Label "io.omnigent.session-name"}}') || return 1
 
 if [ -z "$containers" ]; then
   echo "No running managed Podman session containers found."
-  exit 0
+  return 0
 fi
 
 echo "Checking running managed session containers:"
@@ -40,7 +41,15 @@ EOF
 
 if [ "$failed" -ne 0 ]; then
   echo "One or more managed session hosts remain offline." >&2
-  exit 1
+  return 1
 fi
 
 echo "All running managed session hosts are connected."
+}
+
+result=0
+reconnect_podman || result=1
+if [ -f "$script_dir/../.smolvm-bridge/profile.json" ]; then
+  python3 "$script_dir/../smolvm-bridge/maintenance.py" reconnect || result=1
+fi
+exit "$result"

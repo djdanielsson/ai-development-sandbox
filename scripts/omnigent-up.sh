@@ -15,9 +15,10 @@ cleanup_secrets() {
 trap cleanup_secrets EXIT HUP INT TERM
 
 echo "Requesting Vaultwarden Touch ID..."
-BW_SESSION=$(bwbio unlock --raw)
-if [ -z "$BW_SESSION" ] || printf '%s' "$BW_SESSION" | grep -qi 'error'; then
-  echo "Vaultwarden unlock was canceled or failed." >&2
+if ! BW_SESSION=$(bwbio unlock --raw 2>/dev/null) || [ -z "$BW_SESSION" ]; then
+  echo "Vaultwarden Touch ID unlock failed; the Bitwarden Desktop app is disconnected or locked." >&2
+  echo "Open and unlock Bitwarden Desktop, confirm browser integration is enabled, then rerun this script." >&2
+  echo "No Vaultwarden credentials were loaded into Omnigent." >&2
   exit 1
 fi
 export BW_SESSION
@@ -33,8 +34,26 @@ GITHUB_PAT_JSON=$(bw get item "AI GitHub PAT")
 AI_GIT_NAME=$(printf '%s' "$GITHUB_PAT_JSON" | jq -r '.fields[]? | select(.name == "Git Name") | .value // empty')
 AI_GIT_EMAIL=$(printf '%s' "$GITHUB_PAT_JSON" | jq -r '.fields[]? | select(.name == "Git Email") | .value // empty')
 unset GITHUB_PAT_JSON
-AI_SSH_KEY_B64=$(bw get notes "AI SSH Key" | base64 | tr -d '\n')
-AI_GPG_KEY_B64=$(bw get notes "AI GPG Key" | base64 | tr -d '\n')
+
+fetch_required_note() {
+  item_name=$1
+  if ! note_value=$(bw get notes "$item_name"); then
+    echo "Could not fetch the required Vaultwarden secure note: $item_name" >&2
+    return 1
+  fi
+  if [ -z "$note_value" ]; then
+    echo "The required Vaultwarden secure note is empty: $item_name" >&2
+    return 1
+  fi
+  printf '%s' "$note_value"
+}
+
+AI_SSH_KEY=$(fetch_required_note "AI SSH Key")
+AI_SSH_KEY_B64=$(printf '%s' "$AI_SSH_KEY" | base64 | tr -d '\n')
+unset AI_SSH_KEY
+AI_GPG_KEY=$(fetch_required_note "AI GPG Key")
+AI_GPG_KEY_B64=$(printf '%s' "$AI_GPG_KEY" | base64 | tr -d '\n')
+unset AI_GPG_KEY
 
 MACHINE=${PODMAN_MACHINE:-podman-machine-default}
 MACHINE_UID=$(podman machine ssh "$MACHINE" id -u)
@@ -100,6 +119,9 @@ check_base_image_update() {
 }
 
 check_base_image_update
+if [ -f .smolvm-bridge/profile.json ]; then
+  sh scripts/omnigent-smolvm-bridge.sh start
+fi
 PODMAN_SOCKET="$PODMAN_SOCKET" podman compose up -d
 
 # Keep secret values off the long-lived runner's container environment/config.

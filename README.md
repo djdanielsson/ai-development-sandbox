@@ -103,17 +103,27 @@ in-VM socket path.
 
 If Omnigent marks sessions as disconnected after the computer sleeps, run
 `sh scripts/omnigent-reconnect.sh`. It finds running managed Podman session
-containers, starts a reconnect daemon for each offline host without stopping
+containers and registered smolvm VMs, then starts a reconnect daemon for each offline host without stopping
 the existing host or its runner processes, and waits for the server to report
 the host online. This local-stack recovery uses the same host identity through
 the local single-user server path when a managed launch token has expired. It
 refuses that fallback if the server is not in local single-user mode.
 
-To find running managed containers whose sessions were archived or deleted,
+To find running managed containers or VMs whose sessions were archived or deleted,
 run `sh scripts/omnigent-cleanup-stale-containers.sh`. Every unarchived session
 counts as active, including idle or failed sessions that may be resumed. The
 script reports candidates by default; pass `--apply` to stop them. It only
-stops containers and keeps Omnigent session history intact.
+stops sandboxes and keeps Omnigent session history intact. Stopped VMs retain
+their disks. VMs younger than five minutes, or with unknown creation times,
+are kept to protect launches still registering with the server. The same
+checks are repeated before each VM stop; API failures abort VM cleanup.
+
+Pass `--delete` to stop stale running sandboxes across both providers first,
+then rescan and remove stopped stale containers and VMs, including VM disks.
+This includes sandboxes stopped by an earlier cleanup run. Unarchived sessions
+remain protected even when their sandboxes are stopped. Deletion rechecks
+session ownership and sandbox state; a failed stop phase prevents deletion.
+The default remains report-only, and `--apply` continues to stop without deleting.
 
 Archiving a managed session stops its sandbox container and preserves its
 history. Every run of `sh scripts/omnigent-up.sh` checks the upstream Omnigent
@@ -131,6 +141,56 @@ local runner host reuses the `omnigent-host` container. Project containers join
 the Compose network so they can connect back to the server. If you change the
 Compose project name, update `sandbox.podman.network` in `config.yaml` to match.
 
+### smolvm microVM provider (macOS Apple Silicon)
+
+The **New Sandbox** picker offers both `podman` and `smolvm`; Podman is the
+default. The server stays in Podman. A small authenticated bridge on Mac
+loopback port 8877 runs the upstream
+[smolvm provider](https://github.com/cidrblock/omnigent-smolvm-provider) natively,
+so each smolvm session gets its own Linux microVM through Hypervisor.framework.
+
+For a new installation, install the native runtime and configure the bridge:
+
+```bash
+brew install smol-machines/tap/smolvm
+sh scripts/omnigent-smolvm-bridge.sh setup
+podman compose build omnigent
+sh scripts/omnigent-up.sh
+```
+
+`uv` must be installed on the Mac. Setup installs provider commit
+`65a85dcc857c32fc52b61dcfafb7a51764d137ec` into a separate Python environment
+because its Omnigent dependency differs from the server's. The native runtime
+installed and tested for this integration is smolvm 1.35.1.
+
+The normal stack launcher starts the bridge when configured, refreshes staged
+Codex/OpenCode auth, and exports the local runner image when it changes. Exports
+take several GB of disk space. State, the bridge token, staged auth, logs, and
+the image archive live in the ignored, private `.smolvm-bridge/` directory.
+Vaultwarden credentials are delivered from server tmpfs to the guest through
+the authenticated bridge; values are not passed in native process arguments.
+
+The bridge accepts fixed lifecycle operations for its own registered VMs.
+Uploads carry file contents rather than arbitrary Mac source paths. Guests
+receive only a staged auth directory, with no project or home-directory mount.
+Their private disks persist across stops. Published development ports are
+allocated from 30000–40000, ten per VM, and recorded in `/root/sandbox-info.md`.
+Private-network egress is blocked except for the guest gateway subnet used to
+reach Omnigent at `http://100.96.0.1:8000`.
+
+Manage the bridge independently with:
+
+```bash
+sh scripts/omnigent-smolvm-bridge.sh status
+sh scripts/omnigent-smolvm-bridge.sh start
+sh scripts/omnigent-smolvm-bridge.sh stop
+```
+
+Stopping the bridge leaves existing microVMs running. It starts again on the
+next stack launch; it does not install a Mac login service. Host configuration
+is in `.smolvm-bridge/profile.json`; restart the bridge after editing it.
+Boundary tests run with `python3 -m unittest discover -s smolvm-bridge`.
+
 The runner image also installs Codex CLI and mounts `${HOME}/.codex/auth.json`
 read-only at `/root/.codex/auth.json`. Sign in on the Mac with Codex's file
 credential store before starting the stack; the file must exist for the bind
@@ -147,6 +207,10 @@ and passes it to new project sandboxes as `MAAS_API_KEY`. The runner image trust
 the verified Red Hat internal root CA so Pi can validate the MaaS TLS chain.
 Before building, provision that CA locally at
 `certs/redhat-internal-root-ca.crt`; the certificate is excluded from Git.
+Pi also applies rolling per-model limits of 30 requests and 300,000 estimated
+tokens per minute. Prompt size is estimated before sending and adjusted to the
+reported usage after each completed response. This local limiter assumes one
+active MaaS Pi process; MaaS continues to enforce its own quotas.
 
 The runner image also installs OpenCode CLI, with OpenCode Zen's Muse Spark
 1.3 Contributor Free (`opencode/muse-spark-1.3-contributor-free`) as its

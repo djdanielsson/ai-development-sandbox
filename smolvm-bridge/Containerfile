@@ -1,0 +1,6 @@
+# Fast installation on top of an already-built runner image. The main
+# Containerfile also installs this package for subsequent full rebuilds.
+FROM docker.io/library/omnigent-local:latest
+COPY smolvm-bridge /tmp/omnigent-smolvm-bridge
+RUN pip install --no-deps /tmp/omnigent-smolvm-bridge && \
+    rm -rf /tmp/omnigent-smolvm-bridge

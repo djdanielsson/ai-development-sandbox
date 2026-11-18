@@ -40,6 +40,11 @@ COPY podman-provider /tmp/omnigent-podman-provider
 RUN pip install /tmp/omnigent-podman-provider && \
     rm -rf /tmp/omnigent-podman-provider
 
+# The native smolvm runtime/provider runs on the Mac; only RPC runs here.
+COPY smolvm-bridge /tmp/omnigent-smolvm-bridge
+RUN pip install --no-deps /tmp/omnigent-smolvm-bridge && \
+    rm -rf /tmp/omnigent-smolvm-bridge
+
 # Install Codex CLI in the runner image. The host auth file is mounted at runtime.
 RUN CODEX_NON_INTERACTIVE=1 curl --proto '=https' --tlsv1.2 -fsSL \
     https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh && \
@@ -50,6 +55,10 @@ COPY codex-config.toml /root/.codex/config.toml
 # Install Pi and the dynamic MaaS model catalog extension.
 RUN npm install --global --ignore-scripts @earendil-works/pi-coding-agent && \
     mkdir -p /root/.pi/agent/extensions && \
+    pi_ai_package="$(npm root -g)/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai" && \
+    test -f "$pi_ai_package/package.json" && \
+    mkdir -p /root/.pi/agent/extensions/node_modules/@earendil-works && \
+    ln -s "$pi_ai_package" /root/.pi/agent/extensions/node_modules/@earendil-works/pi-ai && \
     pi --version
 COPY pi-maas-models.ts /root/.pi/agent/extensions/maas-models.ts
 COPY pi-settings.json /root/.pi/agent/settings.json

@@ -14,6 +14,10 @@ import httpx
 def main() -> int:
     server_url = sys.argv[1].rstrip("/")
     session_name = sys.argv[2]
+    provider = sys.argv[3] if len(sys.argv) > 3 else "podman"
+    if provider not in {"podman", "smolvm"}:
+        print("Unsupported managed sandbox provider.", file=sys.stderr)
+        return 2
     client = httpx.Client(timeout=10.0, trust_env=False)
 
     def get_json(path: str) -> dict[str, object]:
@@ -52,11 +56,11 @@ def main() -> int:
         for host in hosts
         if isinstance(host, dict)
         and host.get("name") == session_name
-        and host.get("sandbox_provider") == "podman"
+        and host.get("sandbox_provider") == provider
     ]
     if len(matches) != 1:
         print(
-            f"Expected one Podman host named {session_name!r}; found {len(matches)}.",
+            f"Expected one {provider} host named {session_name!r}; found {len(matches)}.",
             file=sys.stderr,
         )
         return 1
@@ -70,7 +74,7 @@ def main() -> int:
         print(f"{session_name}: already online; leaving its host process alone.")
         return 0
 
-    # A managed launch token can expire while its Podman session remains alive.
+    # A managed launch token can expire while its sandbox remains alive.
     # Use a separate daemon registry so reconnecting does not stop the existing
     # host's runner zygote or any runner processes it owns.
     env = os.environ.copy()

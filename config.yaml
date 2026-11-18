@@ -1,10 +1,16 @@
 sandbox:
   host_type: managed
-  provider: podman
-  server_url: http://omnigent:8000
-  podman:
-    image: docker.io/library/omnigent-local:latest
-    network: ai-development_default
+  providers:
+    - provider: podman
+      server_url: http://omnigent:8000
+      podman:
+        image: docker.io/library/omnigent-local:latest
+        network: ai-development_default
+    - provider: smolvm
+      server_url: http://100.96.0.1:8000
+      smolvm:
+        endpoint: http://host.containers.internal:8877
+        token_file: /run/omnigent-smolvm/token
 
 # Server-wide defaults apply to new sessions, including child sessions.
 policies:

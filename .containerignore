@@ -1,0 +1,4 @@
+.git
+.smolvm-bridge
+**/__pycache__
+**/*.pyc
