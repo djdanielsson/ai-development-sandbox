@@ -1,4 +1,4 @@
-FROM ghcr.io/omnigent-ai/omnigent-server:latest
+FROM ghcr.io/omnigent-ai/omnigent-server:latest@sha256:9532f3f73c176342c748f8a1fd3632e73480cb4cc7a64446be6a835e252f2081
 
 USER root
 
