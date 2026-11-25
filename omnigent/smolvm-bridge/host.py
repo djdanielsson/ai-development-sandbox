@@ -9,8 +9,19 @@ import os
 import re
 import tempfile
 import threading
+from contextlib import ExitStack
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
+
+from relay import (
+    GUEST_SOCKET,
+    MAAS_HOST,
+    MAAS_SOCKET,
+    RHAI_MAAS_HOST,
+    RHAI_MAAS_SOCKET,
+    SERVER_ADDRESS,
+    host_relay,
+)
 
 MAX_BODY = 12 * 1024 * 1024
 MACHINE_ID = re.compile(r"omni-[A-Za-z0-9_.-]{1,48}-[a-f0-9]{8}\Z")
@@ -170,21 +181,73 @@ def main():
     from omnigent.community.sandbox.smolvm.launcher import SmolvmSandboxLauncher
 
     class BoundedLauncher(SmolvmSandboxLauncher):
+        def _create_args(self, *args, **kwargs):
+            return [
+                *super()._create_args(*args, **kwargs),
+                "--mount-socket", f"{relay_socket}:{GUEST_SOCKET}",
+                "--mount-socket", f"{maas_socket}:{MAAS_SOCKET}",
+                "--mount-socket", f"{rhai_maas_socket}:{RHAI_MAAS_SOCKET}",
+            ]
+
+        def _start_relay(self, sandbox_id):
+            guest_script = "/tmp/omnigent-server-relay.py"
+            self.put(sandbox_id, Path(__file__).with_name("relay.py"), guest_script)
+            result = self._smolvm(
+                "machine", "exec", "--name", sandbox_id, "--detach", "--",
+                "python3", guest_script, sandbox_id=sandbox_id,
+            )
+            if result.returncode:
+                raise self._failed("smolvm could not start the Omnigent relay", result)
+            self.run(
+                sandbox_id,
+                "curl -fsS --noproxy '*' --retry 5 --retry-connrefused --max-time 2 "
+                "http://127.0.0.1:8000/health",
+            )
+
+        def provision(self, name):
+            sandbox_id = super().provision(name)
+            try:
+                self._start_relay(sandbox_id)
+            except Exception:
+                self.terminate(sandbox_id)
+                raise
+            return sandbox_id
+
+        def resume(self, sandbox_id):
+            was_running = self.is_running(sandbox_id)
+            super().resume(sandbox_id)
+            if not was_running:
+                socket_available = self.run(sandbox_id, f"test -S {GUEST_SOCKET}", check=False)
+                if socket_available.returncode == 0:
+                    self._start_relay(sandbox_id)
+
         def _smolvm(self, *args, **kwargs):
             if kwargs.get("timeout", 60) is None:
                 kwargs["timeout"] = 600
             return super()._smolvm(*args, **kwargs)
 
     config = SmolvmConfig.model_validate_json((args.root / "profile.json").read_text())
+    relay_socket = args.root / "server.sock"
+    maas_socket = args.root / "maas.sock"
+    rhai_maas_socket = args.root / "rhai-maas.sock"
     launcher = BoundedLauncher(config=config)
     launcher.prepare()
     token = (args.root / "client/token").read_text().strip()
     if len(token) < 40:
         raise ValueError("bridge token is missing or too short")
     bridge = Bridge(launcher, args.root)
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(bridge, token))
-    print(f"smolvm bridge listening on 127.0.0.1:{args.port}", flush=True)
-    server.serve_forever()
+    with ExitStack() as stack:
+        server = stack.enter_context(ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(bridge, token)))
+        for path, upstream in (
+            (relay_socket, SERVER_ADDRESS),
+            (maas_socket, (MAAS_HOST, 443)),
+            (rhai_maas_socket, (RHAI_MAAS_HOST, 443)),
+        ):
+            path.unlink(missing_ok=True)
+            relay = stack.enter_context(host_relay(path, upstream))
+            threading.Thread(target=relay.serve_forever, daemon=True).start()
+        print(f"smolvm bridge listening on 127.0.0.1:{args.port}", flush=True)
+        server.serve_forever()
 
 
 if __name__ == "__main__":

@@ -44,9 +44,10 @@ session ownership and sandbox state; a failed stop phase prevents deletion.
 The default remains report-only, and `--apply` continues to stop without deleting.
 
 Archiving a managed session stops its sandbox container and preserves its
-history. Every run of `sh omnigent/scripts/omnigent-up.sh` checks the pinned Omnigent
-server image and asks before pulling and rebuilding when a newer version is
-available. The stop-before-archive behavior is included in the current server.
+history. The launcher builds the local Omnigent image when it is missing.
+When the local image exists, the launcher checks the upstream server image and
+asks before pulling and rebuilding if a newer version is available.
+The stop-before-archive behavior is included in the current server.
 
 Since this Compose setup has `OMNIGENT_AUTH_ENABLED=0`, no Omnigent login step
 is needed. The project directory defaults to `~/projects`; set `PROJECTS_DIR`
@@ -72,7 +73,6 @@ For a new installation, install the native runtime and configure the bridge:
 ```bash
 brew install smol-machines/tap/smolvm
 sh omnigent/scripts/omnigent-smolvm-bridge.sh setup
-podman compose -f omnigent/docker-compose.yml build omnigent
 sh omnigent/scripts/omnigent-up.sh
 ```
 
@@ -93,8 +93,12 @@ Uploads carry file contents rather than arbitrary Mac source paths. Guests
 receive only a staged auth directory, with no project or home-directory mount.
 Their private disks persist across stops. Published development ports are
 allocated from 30000–40000, ten per VM, and recorded in `/root/sandbox-info.md`.
-Private-network egress is blocked except for the guest gateway subnet used to
-reach Omnigent at `http://100.96.0.1:8000`.
+Private-network egress is blocked. New VMs reach Omnigent at
+`http://127.0.0.1:8000` through a dedicated socket mounted by smolvm. The Mac
+bridge forwards that socket to Omnigent's loopback port.
+New VMs use dedicated sockets to reach `models.corp.redhat.com:443` and
+`maas.apps.ocp.cloud.rhai-tmm.dev:443` through the Mac's network connection.
+Pi verifies the MaaS TLS certificates using the CA bundled in the image.
 
 Manage the bridge independently with:
 
@@ -132,6 +136,16 @@ tokens per minute. Prompt size is estimated before sending and adjusted to the
 reported usage after each completed response. This local limiter assumes one
 active MaaS Pi process; MaaS continues to enforce its own quotas.
 
+Pi's `/model` picker also lists models from the `rhai-maas` provider. Pi retries
+discovery at `https://maas.apps.ocp.cloud.rhai-tmm.dev/v1/models` and uses the
+configured fallback catalog if the gateway returns no models.
+The launcher reads the password of the Vaultwarden login
+`rh-ai.apps.ocp.cloud.rhai-tmm.dev` and supplies it as `RHAI_MAAS_API_KEY`.
+The existing MaaS provider is available if this additional password is missing.
+New project sandboxes pick up the provider after rebuilding and relaunching the
+stack. Restart the smolvm bridge first if it is already running so newly
+created VMs get the new gateway socket.
+
 The runner image also installs OpenCode CLI, with OpenCode Zen's Muse Spark
 1.3 Contributor Free (`opencode/muse-spark-1.3-contributor-free`) as its
 default. To authenticate without installing OpenCode on the Mac, run
@@ -148,8 +162,9 @@ The runner image also installs Cursor Agent CLI. The Omnigent helper fetches
 the `Cursor API` value from Vaultwarden and passes it to the runner and newly
 created project sandboxes as `CURSOR_API_KEY`; no Cursor login file is mounted.
 
-The Omnigent launcher reads `Cursor API`, `maas`, `AI GitHub PAT`, `AI SSH Key`,
-and `AI GPG Key` from Vaultwarden at stack start. The GitHub PAT item's `Git Name`
+The Omnigent launcher reads `Cursor API`, `maas`,
+`rh-ai.apps.ocp.cloud.rhai-tmm.dev`, `AI GitHub PAT`, `AI SSH Key`, and
+`AI GPG Key` from Vaultwarden at stack start. The GitHub PAT item's `Git Name`
 and `Git Email` fields configure commits. GitHub authentication is passed to
 new project sandboxes as `GH_TOKEN`; private keys are imported into the
 sandbox's private home only when that sandbox starts. The launcher sends the

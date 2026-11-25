@@ -66,6 +66,7 @@ class SmolvmBridgeLauncher(ExecModelHostLauncher):
         root = Path(os.environ.get("OMNIGENT_CREDENTIALS_DIR", "/run/omnigent-secrets"))
         names = {
             "CURSOR_API_KEY": "cursor_api_key", "MAAS_API_KEY": "maas_api_key",
+            "RHAI_MAAS_API_KEY": "rhai_maas_api_key",
             "GH_TOKEN": "github_token", "AI_SSH_KEY_B64": "ssh_key_b64",
             "AI_GPG_KEY_B64": "gpg_key_b64", "AI_GIT_NAME": "git_name",
             "AI_GIT_EMAIL": "git_email",
@@ -112,7 +113,7 @@ class SmolvmBridgeLauncher(ExecModelHostLauncher):
 
     def run(self, sandbox_id, command, *, check=True):
         values = {key: value for key, value in self._credentials().items()
-                  if key in {"GH_TOKEN", "MAAS_API_KEY", "CURSOR_API_KEY"}}
+                  if key in {"GH_TOKEN", "MAAS_API_KEY", "RHAI_MAAS_API_KEY", "CURSOR_API_KEY"}}
         if values:
             values["OMNIGENT_RUNNER_ENV_PASSTHROUGH"] = ",".join(values)
         prefix = "".join(f"export {key}={shlex.quote(value)}\n" for key, value in values.items())

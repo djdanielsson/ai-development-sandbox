@@ -16,13 +16,14 @@ NAMES = (
     "gpg_key_b64",
     "git_name",
     "git_email",
+    "rhai_maas_api_key",
 )
 
 
 def main() -> int:
     values = sys.stdin.buffer.read().splitlines()
     if len(values) != len(NAMES):
-        print("Expected seven newline-delimited credential values.", file=sys.stderr)
+        print(f"Expected {len(NAMES)} newline-delimited credential values.", file=sys.stderr)
         return 2
 
     directory = Path(os.environ.get("OMNIGENT_CREDENTIALS_DIR", "/run/omnigent-secrets"))

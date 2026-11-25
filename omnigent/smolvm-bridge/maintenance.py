@@ -72,7 +72,7 @@ def reconnect():
         print("No running managed smolvm VMs found.")
         return 0
     source = (REPO / "scripts/omnigent-reconnect-container.py").read_text()
-    url = os.environ.get("OMNIGENT_SMOLVM_SERVER_URL", "http://100.96.0.1:8000")
+    url = os.environ.get("OMNIGENT_SMOLVM_SERVER_URL", "http://127.0.0.1:8000")
     failed = False
     for machine in running:
         name = machine.get("session_name")

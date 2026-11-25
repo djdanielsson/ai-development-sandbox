@@ -52,7 +52,6 @@ def setup():
             "binary": shutil.which("smolvm"),
             "cpus": 4, "memory_mib": 8192,
             "net_backend": "virtio-net", "block_private": True,
-            "allow_private": ["100.96.0.0/30"],
             "environment": {"DO_NOT_TRACK": "1", "SMOLVM_USAGE": "0"},
             "mounts": [{"source": str(ROOT / "auth-root"), "target": "/mnt/omnigent-auth", "mode": "ro"}],
             "init": ["mkdir -p /root/.codex /root/.local/share/opencode; cp -R /mnt/omnigent-auth/. /root/; chown -R root:root /root/.codex /root/.local/share/opencode"],

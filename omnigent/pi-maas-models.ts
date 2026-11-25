@@ -11,15 +11,22 @@ import { getApiProvider } from "@earendil-works/pi-ai/compat";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const BASE_URL = "https://models.corp.redhat.com/oai/v1";
+const RHAI_BASE_URL = "https://maas.apps.ocp.cloud.rhai-tmm.dev/v1";
 const FALLBACK_MODEL_ID = "deepseek-4-1-flash";
+const RHAI_FALLBACK_MODEL_IDS = [
+  "publishers/prelude-maas/models/gemma4",
+  "publishers/prelude-maas/models/glm-53-flash",
+  "publishers/prelude-maas/models/llama-32-3b",
+  "publishers/prelude-maas/models/qwen38-27b",
+];
+const RHAI_DISCOVERY_ATTEMPTS = 4;
 const DISCOVERY_TIMEOUT_MS = 10_000;
 const MAX_MODELS = 500;
 const REQUESTS_PER_MINUTE = 30;
 const TOKENS_PER_MINUTE = 300_000;
 const RATE_WINDOW_MS = 60_000;
 const DEFAULT_CONTEXT_WINDOW = 128_000;
-const DEFAULT_MAX_TOKENS = 4_096;
-const FALLBACK_MODEL_MAX_TOKENS = 16_384;
+const DEFAULT_MAX_TOKENS = 16_384;
 
 type MaaSModel = {
   id: string;
@@ -231,9 +238,9 @@ function parseModel(value: unknown): MaaSModel | undefined {
         ? model.context_window
         : undefined,
     max_tokens:
-      typeof model.max_tokens === "number" && Number.isFinite(model.max_tokens)
+      typeof model.max_tokens === "number" && Number.isFinite(model.max_tokens) && model.max_tokens > 0
         ? model.max_tokens
-        : typeof model.max_output_tokens === "number" && Number.isFinite(model.max_output_tokens)
+        : typeof model.max_output_tokens === "number" && Number.isFinite(model.max_output_tokens) && model.max_output_tokens > 0
           ? model.max_output_tokens
         : undefined,
     reasoning: model.reasoning === true,
@@ -257,39 +264,48 @@ function toPiModel(model: MaaSModel) {
       model.context_window && model.context_window > 0
         ? model.context_window
         : DEFAULT_CONTEXT_WINDOW,
-    maxTokens:
-      model.max_tokens && model.max_tokens > 0
-        ? model.max_tokens
-        : model.id === FALLBACK_MODEL_ID
-          ? FALLBACK_MODEL_MAX_TOKENS
-          : DEFAULT_MAX_TOKENS,
+    maxTokens: model.max_tokens ?? DEFAULT_MAX_TOKENS,
   };
 }
 
-export default async function (pi: ExtensionAPI) {
-  let models: MaaSModel[] = [];
-  const apiKey = process.env.MAAS_API_KEY;
-
-  if (apiKey) {
+async function discoverModels(
+  baseUrl: string,
+  apiKey: string,
+  label: string,
+  attempts = 1,
+): Promise<MaaSModel[]> {
+  const signal = AbortSignal.timeout(DISCOVERY_TIMEOUT_MS);
+  for (let attempt = 0; attempt < attempts && !signal.aborted; attempt++) {
     try {
-      const response = await fetch(`${BASE_URL}/models`, {
+      const response = await fetch(`${baseUrl}/models`, {
         headers: { Authorization: `Bearer ${apiKey}` },
-        signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+        signal,
       });
-      if (!response.ok) throw new Error("MaaS model discovery failed");
+      if (!response.ok) {
+        await response.body?.cancel();
+        continue;
+      }
 
       const payload = (await response.json()) as { data?: unknown };
       if (Array.isArray(payload.data)) {
-        models = payload.data.map(parseModel).filter((model) => model !== undefined).slice(0, MAX_MODELS);
+        const models = payload.data.map(parseModel).filter((model) => model !== undefined).slice(0, MAX_MODELS);
+        if (models.length > 0) return models;
       }
-      if (models.length === 0) throw new Error("No MaaS models returned");
     } catch {
-      // Fall back below without logging response data or credentials.
-      process.stderr.write(
-        "MaaS model discovery failed; using the configured fallback model.\n",
-      );
+      // Discovery errors can contain response data and credentials.
     }
   }
+  process.stderr.write(`${label} model discovery failed; using configured fallback models.\n`);
+  return [];
+}
+
+export default async function (pi: ExtensionAPI) {
+  const apiKey = process.env.MAAS_API_KEY;
+  const rhaiApiKey = process.env.RHAI_MAAS_API_KEY;
+  const [models, rhaiModels] = await Promise.all([
+    apiKey ? discoverModels(BASE_URL, apiKey, "Red Hat MaaS") : [],
+    rhaiApiKey ? discoverModels(RHAI_BASE_URL, rhaiApiKey, "OpenShift AI MaaS", RHAI_DISCOVERY_ATTEMPTS) : [],
+  ]);
 
   if (!models.some((model) => model.id === FALLBACK_MODEL_ID)) {
     models.push({ id: FALLBACK_MODEL_ID });
@@ -303,4 +319,15 @@ export default async function (pi: ExtensionAPI) {
     streamSimple: streamWithRateLimit,
     models: models.map(toPiModel),
   });
+
+  if (rhaiApiKey) {
+    const catalog = rhaiModels.length > 0 ? rhaiModels : RHAI_FALLBACK_MODEL_IDS.map((id) => ({ id }));
+    pi.registerProvider("rhai-maas", {
+      name: "OpenShift AI MaaS",
+      baseUrl: RHAI_BASE_URL,
+      api: "openai-completions",
+      apiKey: "$RHAI_MAAS_API_KEY",
+      models: catalog.map(toPiModel),
+    });
+  }
 }

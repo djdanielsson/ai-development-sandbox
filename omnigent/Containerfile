@@ -63,9 +63,13 @@ RUN npm install --global --ignore-scripts @earendil-works/pi-coding-agent && \
 COPY pi-maas-models.ts /root/.pi/agent/extensions/maas-models.ts
 COPY pi-settings.json /root/.pi/agent/settings.json
 
-# Install OpenCode CLI and set the OpenCode Zen default model.
-RUN curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path && \
-    opencode --version
+# Install the latest OpenCode 2 CLI and set the OpenCode Zen default model.
+RUN curl -fsSL https://opencode.ai/v2/install -o /tmp/install-opencode.sh && \
+    bash /tmp/install-opencode.sh --no-modify-path && \
+    rm /tmp/install-opencode.sh && \
+    opencode_version="$(opencode --version)" && \
+    echo "$opencode_version" && \
+    printf '%s\n' "$opencode_version" | grep -Eq '^(opencode )?v?2\.[0-9]+\.[0-9]+$'
 COPY opencode-config.json /root/.config/opencode/opencode.json
 
 # Install Cursor Agent CLI; authentication is supplied at runtime.

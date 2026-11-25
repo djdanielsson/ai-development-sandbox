@@ -14,6 +14,7 @@ done
 
 cleanup_secrets() {
   unset BW_SESSION CURSOR_API_KEY MAAS_API_KEY AI_GITHUB_TOKEN AI_GIT_NAME AI_GIT_EMAIL
+  unset RHAI_MAAS_API_KEY
   unset AI_SSH_KEY_B64 AI_GPG_KEY_B64
 }
 trap cleanup_secrets EXIT HUP INT TERM
@@ -33,6 +34,10 @@ bw sync >/dev/null
 echo "Fetching runner credentials from Vaultwarden..."
 CURSOR_API_KEY=$(bw get password "Cursor API")
 MAAS_API_KEY=$(bw get password "maas")
+if ! RHAI_MAAS_API_KEY=$(bw get password "rh-ai.apps.ocp.cloud.rhai-tmm.dev") || [ -z "$RHAI_MAAS_API_KEY" ]; then
+  echo "OpenShift AI MaaS key unavailable from Vaultwarden; continuing with the existing Pi provider." >&2
+  RHAI_MAAS_API_KEY=
+fi
 AI_GITHUB_TOKEN=$(bw get password "AI GitHub PAT")
 GITHUB_PAT_JSON=$(bw get item "AI GitHub PAT")
 AI_GIT_NAME=$(printf '%s' "$GITHUB_PAT_JSON" | jq -r '.fields[]? | select(.name == "Git Name") | .value // empty')
@@ -122,7 +127,17 @@ check_base_image_update() {
   esac
 }
 
-check_base_image_update
+if podman image exists omnigent-local; then
+  check_base_image_update
+else
+  image_status=$?
+  if [ "$image_status" -ne 1 ]; then
+    echo "Could not check for the local Omnigent image." >&2
+    exit "$image_status"
+  fi
+  echo "Building the local Omnigent image..."
+  PODMAN_SOCKET="$PODMAN_SOCKET" podman compose build omnigent
+fi
 if [ -f ../.smolvm-bridge/profile.json ]; then
   sh scripts/omnigent-smolvm-bridge.sh start
 fi
@@ -138,6 +153,7 @@ printf '%s\n' \
   "$AI_GPG_KEY_B64" \
   "$AI_GIT_NAME" \
   "$AI_GIT_EMAIL" \
+  "$RHAI_MAAS_API_KEY" \
   | podman exec -i omnigent-server /usr/local/bin/write-omnigent-secrets.py
 
 echo "Runner credentials loaded into tmpfs; new project sandboxes can now use them."

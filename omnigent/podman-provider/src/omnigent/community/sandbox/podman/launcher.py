@@ -68,9 +68,13 @@ class PodmanSandboxLauncher(ExecModelHostLauncher):
         runner_env_passthrough: list[str] = []
         if cursor_key := self._read_credential("cursor_api_key"):
             environment["CURSOR_API_KEY"] = cursor_key
-        if maas_key := self._read_credential("maas_api_key"):
-            environment["MAAS_API_KEY"] = maas_key
-            runner_env_passthrough.append("MAAS_API_KEY")
+        for env_name, file_name in (
+            ("MAAS_API_KEY", "maas_api_key"),
+            ("RHAI_MAAS_API_KEY", "rhai_maas_api_key"),
+        ):
+            if value := self._read_credential(file_name):
+                environment[env_name] = value
+                runner_env_passthrough.append(env_name)
         if github_token := self._read_credential("github_token"):
             # Omnigent's managed runner launches agent commands in Bash
             # subprocesses. The host filters secrets by default, so explicitly
